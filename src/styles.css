@@ -1,0 +1,131 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #12110f;
+  --color-surface: #1c1b18;
+  --color-card: #24221e;
+  --color-fg: #f4efe6;
+  --color-muted: #a39a8c;
+  --color-subtle: #6f685c;
+  --color-border: #35322c;
+  --color-accent: #c45c38;
+  --color-accent-fg: #fff7f0;
+  --color-canvas: #0c0b0a;
+  --font-sans: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    min-height: 100%;
+    background: var(--color-bg);
+    color: var(--color-fg);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .think-mark {
+    position: relative;
+    display: grid;
+    width: 1.5rem;
+    height: 1.5rem;
+    flex-shrink: 0;
+    place-items: center;
+  }
+
+  .think-arc {
+    position: absolute;
+    inset: 0;
+    border: 1px solid color-mix(in srgb, var(--color-accent) 28%, transparent);
+    border-top-color: var(--color-accent);
+    border-radius: 999px;
+    animation: think-spin 2.2s linear infinite;
+  }
+
+  .think-label {
+    color: var(--color-fg);
+  }
+
+  .think-dots span {
+    animation: think-dot 1.2s ease-in-out infinite;
+  }
+
+  .think-dots span:nth-child(2) {
+    animation-delay: 0.16s;
+  }
+
+  .think-dots span:nth-child(3) {
+    animation-delay: 0.32s;
+  }
+
+  .think-file {
+    animation: think-file-in 250ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .think-caret {
+    display: inline-block;
+    width: 1px;
+    height: 0.8em;
+    flex-shrink: 0;
+    background: var(--color-accent);
+    animation: think-caret 1s steps(1) infinite;
+  }
+
+  @keyframes think-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes think-dot {
+    0%,
+    80%,
+    100% {
+      opacity: 0.28;
+    }
+    40% {
+      opacity: 1;
+    }
+  }
+
+  @keyframes think-file-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+      filter: blur(2px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+      filter: blur(0);
+    }
+  }
+
+  @keyframes think-caret {
+    50% {
+      opacity: 0;
+    }
+  }
+}

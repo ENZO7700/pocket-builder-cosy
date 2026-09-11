@@ -1,0 +1,38 @@
+{
+  "url": "http://127.0.0.1:8081/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "Cozy AI Studio",
+      "hasCanvas": false,
+      "bodyTextLen": 351,
+      "bodyTextHash": "809b2d60dd51d740306b6a8321a92d79bf015b389b0c646d64d32025f342ee1e",
+      "bodyTextPrefix": "Cozy Open Studio BRIEF TO PREVIEW A quiet studio for shipping pr",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "Cozy AI Studio",
+      "hasCanvas": false,
+      "bodyTextLen": 351,
+      "bodyTextHash": "809b2d60dd51d740306b6a8321a92d79bf015b389b0c646d64d32025f342ee1e",
+      "bodyTextPrefix": "Cozy Open Studio BRIEF TO PREVIEW A quiet studio for shipping pr",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-built.json",
+  "divergesFromBaseline": false,
+  "baselineReasons": []
+}

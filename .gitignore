@@ -1,0 +1,11 @@
+node_modules/
+.project_id
+.github_repo
+.env
+.env.*
+dist/
+dist/report.html
+dist/bundlemeta.json
+.vercel/
+.output/
+.nitro/

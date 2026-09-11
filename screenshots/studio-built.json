@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8081/studio",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "Studio — Cozy AI Studio",
+      "hasCanvas": false,
+      "bodyTextLen": 423,
+      "bodyTextHash": "6446382120b8f24580081426710ed25b38aa1816272c37fd7690fe435e236f29",
+      "bodyTextPrefix": "Cozy Grok Source New Describe a kanban, chat, habits grid, calen",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/studio-built.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "Studio — Cozy AI Studio",
+      "hasCanvas": false,
+      "bodyTextLen": 280,
+      "bodyTextHash": "4abff2e19d01a8f6d8caabec4faaac0d824388ecbd582bb2d567c778ca782afa",
+      "bodyTextPrefix": "Cozy New Describe a kanban, chat, habits grid, calendar, or note",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/studio-built-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/studio-built.json"
+}
