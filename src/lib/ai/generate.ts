@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { abortKind } from "@/lib/ai/abort-signal";
 import { injectCozyElements } from "@/lib/preview/cozy-elements";
 
-export type AiProvider = "grok";
+export type AiProvider = "mistral" | "grok";
 
 export type GenerateResult =
   | {
@@ -22,6 +22,7 @@ export type GenerateResult =
     };
 
 export type AiStatus = {
+  mistral: boolean;
   grok: boolean;
   locked: boolean;
 };
@@ -35,6 +36,10 @@ const CREATE_SYSTEM =
 
 const REVISE_SYSTEM =
   "You revise an existing self-contained HTML document. Apply the user's change request. Output ONLY a complete HTML file (doctype through </html>). No markdown. Keep warm paper background #f4efe6, ink text #1c1915, terracotta #c45c38. Vanilla JS only. Wrap localStorage in try/catch. No Tailwind, no CDNs, no external scripts, no Node APIs, no Vite. Preserve structure and working behavior unless the user asks to change it. Keep Cozy custom elements (<cozy-*>) if present; do not strip the data-cozy-elements script.";
+
+function mistralKey(): string | null {
+  return (process.env.MISTRAL_API_KEY ?? "").trim() || null;
+}
 
 function grokKey(): string | null {
   return (process.env.XAI_API_KEY ?? "").trim() || null;
@@ -135,6 +140,7 @@ function pack(text: string, provider: AiProvider, model: string): GenerateResult
 
 export const getAiStatus = createServerFn({ method: "GET" }).handler(
   async (): Promise<AiStatus> => ({
+    mistral: Boolean(mistralKey()),
     grok: Boolean(grokKey()),
     locked: Boolean(
       (process.env.GENERATE_ACCESS_TOKEN ?? process.env.API_SECRET ?? "").trim(),
@@ -194,29 +200,88 @@ export const generatePreview = createServerFn({ method: "POST" })
       ? `Change request:\n${data.prompt || "Tighten the layout."}\n\nCurrent HTML:\n${data.html}`
       : data.prompt || "A calm personal studio landing page.";
 
+    const mistral = mistralKey();
     const xai = grokKey();
-    if (!xai) {
-      return { ok: false, error: "Grok API key (XAI_API_KEY) is not configured", status: 503 };
+    
+    if (!mistral && !xai) {
+      return { 
+        ok: false, 
+        error: "No AI API key configured. Set MISTRAL_API_KEY (primary) or XAI_API_KEY (Grok fallback)", 
+        status: 503 
+      };
     }
 
-    const grok = await complete({
-      url: "https://api.x.ai/v1/chat/completions",
-      key: xai,
-      model: "grok-4.5",
-      system,
-      prompt,
-      maxTokens: 4096,
-      signal,
-    });
+    // Try Mistral first (primary)
+    if (mistral) {
+      const mistralResult = await complete({
+        url: "https://api.mistral.ai/v1/chat/completions",
+        key: mistral,
+        model: "mistral-large-latest",
+        system,
+        prompt,
+        maxTokens: 4096,
+        signal,
+      });
 
-    if (grok.ok) {
-      const packed = pack(grok.text, "grok", "grok-4.5");
-      if (packed.ok) return packed;
-      return { ok: false, error: packed.error };
+      if (mistralResult.ok) {
+        const packed = pack(mistralResult.text, "mistral", "mistral-large-latest");
+        if (packed.ok) return packed;
+        return { ok: false, error: packed.error };
+      }
+      if (mistralResult.aborted) {
+        logGenerateAbort(signal);
+        return { ok: false, error: "Cancelled", status: 499, aborted: true };
+      }
+      // If Mistral failed but we have Grok as fallback, try Grok
+      if (xai) {
+        const grokResult = await complete({
+          url: "https://api.x.ai/v1/chat/completions",
+          key: xai,
+          model: "grok-4.5",
+          system,
+          prompt,
+          maxTokens: 4096,
+          signal,
+        });
+
+        if (grokResult.ok) {
+          const packed = pack(grokResult.text, "grok", "grok-4.5");
+          if (packed.ok) return packed;
+          return { ok: false, error: packed.error };
+        }
+        if (grokResult.aborted) {
+          logGenerateAbort(signal);
+          return { ok: false, error: "Cancelled", status: 499, aborted: true };
+        }
+        return { ok: false, error: grokResult.error };
+      }
+      return { ok: false, error: mistralResult.error };
     }
-    if (grok.aborted) {
-      logGenerateAbort(signal);
-      return { ok: false, error: "Cancelled", status: 499, aborted: true };
+
+    // Only Grok is configured
+    if (xai) {
+      const grokResult = await complete({
+        url: "https://api.x.ai/v1/chat/completions",
+        key: xai,
+        model: "grok-4.5",
+        system,
+        prompt,
+        maxTokens: 4096,
+        signal,
+      });
+
+      if (grokResult.ok) {
+        const packed = pack(grokResult.text, "grok", "grok-4.5");
+        if (packed.ok) return packed;
+        return { ok: false, error: packed.error };
+      }
+      if (grokResult.aborted) {
+        logGenerateAbort(signal);
+        return { ok: false, error: "Cancelled", status: 499, aborted: true };
+      }
+      return { ok: false, error: grokResult.error };
     }
-    return { ok: false, error: grok.error };
+
+    // Should never reach here due to the check above
+    return { ok: false, error: "No AI provider available", status: 503 };
   });

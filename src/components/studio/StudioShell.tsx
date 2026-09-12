@@ -23,8 +23,10 @@ import { useEffect, useRef, useState } from "react";
 type MobilePanel = "chat" | "code" | "preview";
 
 function providerLabel(status: AiStatus | null, used: string | null): string {
+  if (used === "mistral") return "Mistral";
   if (used === "grok") return "Grok";
   if (used === "local") return "Local";
+  if (status?.mistral) return "Mistral";
   if (status?.grok) return "Grok";
   return "Local";
 }

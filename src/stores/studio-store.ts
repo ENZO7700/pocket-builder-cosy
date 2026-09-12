@@ -8,7 +8,7 @@ export type StudioMessage = {
   text: string;
 };
 
-export type StudioProvider = "grok" | "local" | null;
+export type StudioProvider = "mistral" | "grok" | "local" | null;
 
 type StudioState = {
   brief: string;

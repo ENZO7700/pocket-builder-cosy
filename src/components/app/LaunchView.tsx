@@ -440,7 +440,11 @@ function ProductionResourcesCard() {
 
   const rows = [
     {
-      label: "XAI_API_KEY (Grok)",
+      label: "MISTRAL_API_KEY (Primary)",
+      configured: status?.mistral ?? false,
+    },
+    {
+      label: "XAI_API_KEY (Grok Fallback)",
       configured: status?.grok ?? false,
     },
     {
@@ -454,7 +458,7 @@ function ProductionResourcesCard() {
       id="launch-resources"
       icon={Server}
       title="Production Resources"
-      description="Stav API kľúčov a prístupových tokenov na serveri."
+      description="Stav API kľúčov (Mistral - hlavný, Grok - záloha) a prístupových tokenov na serveri."
     >
       <div className="space-y-2">
         {rows.map((row) => (
@@ -480,7 +484,7 @@ function ProductionResourcesCard() {
           </div>
         ))}
         <p className="pt-1 text-xs leading-relaxed text-muted">
-          Kľúče sa nastavujú cez env premenné na Vercel alebo v `.env.local` pri vývoji.
+          Kľúče sa nastavujú cez env premenné na Vercel alebo v `.env.local` pri vývoji. MISTRAL_API_KEY je hlavný, XAI_API_KEY je záloha.
         </p>
       </div>
     </LaunchCard>
