@@ -255,9 +255,8 @@ VALIDATION_STRATEGY=auto
 BROWSER_POOL_SIZE=2
 VALIDATION_MAX_HTML_SIZE=500000
 
-# AI Providers (REPLACE WITH ACTUAL KEYS)
+# AI Provider (REPLACE WITH ACTUAL KEY)
 MISTRAL_API_KEY=your_mistral_api_key_here
-XAI_API_KEY=your_xai_api_key_here
 
 # Domain (REPLACE WITH YOUR DOMAIN)
 DOMAIN=yourdomain.com
@@ -473,7 +472,6 @@ echo "  1. Configure your domain in .env:"
 echo "     - DOMAIN=yourdomain.com"
 echo "     - EMAIL=admin@yourdomain.com"
 echo "     - MISTRAL_API_KEY=your_api_key"
-echo "     - XAI_API_KEY=your_api_key"
 echo ""
 echo "  2. Run the following commands:"
 echo "     sudo -u app nano /opt/cosy-pocket-builder/.env"

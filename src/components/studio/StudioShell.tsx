@@ -24,10 +24,8 @@ type MobilePanel = "chat" | "code" | "preview";
 
 function providerLabel(status: AiStatus | null, used: string | null): string {
   if (used === "mistral") return "Mistral";
-  if (used === "grok") return "Grok";
   if (used === "local") return "Local";
   if (status?.mistral) return "Mistral";
-  if (status?.grok) return "Grok";
   return "Local";
 }
 
@@ -172,7 +170,7 @@ export function StudioShell() {
           html: remote.html,
           assistantText: revising
             ? "Updated the board."
-            : "Preview generated with Grok.",
+            : "Preview generated with Mistral.",
           provider: remote.provider,
         });
         upsertProject({

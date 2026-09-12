@@ -23,9 +23,8 @@ services:
       - BROWSER_POOL_SIZE=2
       - VALIDATION_MAX_HTML_SIZE=500000
       
-      # AI Provider (configure these)
+      # AI Provider (required)
       - MISTRAL_API_KEY=${MISTRAL_API_KEY}
-      - XAI_API_KEY=${XAI_API_KEY}
       
       # Optional: Redis for rate limiting
       - REDIS_URL=redis://redis:6379
