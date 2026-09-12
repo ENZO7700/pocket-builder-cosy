@@ -55,10 +55,12 @@ production-quality, self-contained single-file web apps from a short user brief.
 - No Markdown, no code fences, no commentary before or after the HTML.
 - One <style> in <head>, one <script> at the end of <body>.
 - Fully self-contained. No external scripts, stylesheets, fonts, or libraries.
-- Images: use inline SVG, CSS gradients, or emoji. You MAY use external images
-  only from permissive reliable hosts (images.unsplash.com, picsum.photos,
-  loremflickr.com) as progressive enhancement - always give a CSS
-  background-color/gradient fallback and never let layout depend on an image.
+- Images: use ONLY inline SVG, CSS gradients, or emoji. NEVER use external URLs (https://...)
+  in CSS or HTML. External requests will be BLOCKED by validation. Do NOT use images.unsplash.com,
+  picsum.photos, or any other external hosts - these will cause generation to FAIL.
+- All <img> tags MUST have alt attribute. Use descriptive text or empty alt="" for decorative.
+- For avatars/placeholders: Use emoji as textContent (👩, 👨, 👤) with backgroundImage: 'none',
+  NEVER use external image URLs.
 - Vanilla JavaScript only (ES2020+). No frameworks. Wrap every localStorage
   read/write in try/catch so private browsing can never crash the app.
 
@@ -125,10 +127,18 @@ plus a change request.
 - Stay self-contained: no external scripts/fonts/libs, vanilla JS, localStorage
   wrapped in try/catch.
 
+## CRITICAL: Always fix these if present
+- REMOVE ALL external URLs (https://...) from CSS and HTML. Replace with:
+  - CSS gradients for backgrounds (match existing color scheme)
+  - Inline SVG for images
+  - Emoji (👩, 👨, 👤, etc.) for avatars
+- ADD alt attribute to ALL <img> tags that don't have one.
+- For avatars using background-image: Replace with emoji textContent and backgroundImage: 'none'.
+
 ## Revision quality
 - Make the change feel native to the app - same spacing, type and component
   patterns - not bolted on.
-- After editing, re-check: no console errors, no layout breakage at 360px, no
+- After editing, re-check: no external requests, no console errors, no layout breakage at 360px, no
   horizontal overflow, and unchanged features still work.
 
 Output the full updated HTML document now.`;
