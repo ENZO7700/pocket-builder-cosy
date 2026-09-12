@@ -121,5 +121,133 @@
       "hasForm": true,
       "noConsoleErrors": true
     }
+  },
+  {
+    "id": "recipe-finder",
+    "name": "Recipe Finder App",
+    "prompt": "A recipe search app with search bar, filters for meal type and cuisine, recipe cards with images, and a favorites feature using localStorage. Use a warm, food-inspired color palette with orange and brown accents.",
+    "expected": {
+      "hasDoctype": true,
+      "hasViewport": true,
+      "hasTitle": true,
+      "noHorizontalOverflow": true,
+      "hasLocalStorage": true,
+      "noConsoleErrors": true
+    }
+  },
+  {
+    "id": "note-taking",
+    "name": "Note Taking App",
+    "prompt": "A minimal note-taking app with markdown support. Include a sidebar for note list, main editor area, and save/load functionality to localStorage. Use a clean, distraction-free design with light gray background.",
+    "expected": {
+      "hasDoctype": true,
+      "hasViewport": true,
+      "hasTitle": true,
+      "noHorizontalOverflow": true,
+      "hasLocalStorage": true,
+      "noConsoleErrors": true
+    }
+  },
+  {
+    "id": "countdown-timer",
+    "name": "Countdown Timer",
+    "prompt": "A countdown timer app with input for hours, minutes, seconds. Include start, pause, reset buttons and visual progress indication. Use a circular progress display. Make it mobile-friendly.",
+    "expected": {
+      "hasDoctype": true,
+      "hasViewport": true,
+      "hasTitle": true,
+      "noHorizontalOverflow": true,
+      "interactive": true,
+      "noConsoleErrors": true
+    }
+  },
+  {
+    "id": "quiz-app",
+    "name": "Quiz Application",
+    "prompt": "A multi-step quiz app with multiple choice questions, scoring, and results page. Include a question counter, timer, and ability to restart. Use a fun, educational color scheme.",
+    "expected": {
+      "hasDoctype": true,
+      "hasViewport": true,
+      "hasTitle": true,
+      "noHorizontalOverflow": true,
+      "interactive": true,
+      "noConsoleErrors": true
+    }
+  },
+  {
+    "id": "image-gallery",
+    "name": "Image Gallery",
+    "prompt": "An image gallery with thumbnail grid, lightbox for full-size viewing, navigation arrows, and captions. Use CSS Grid for layout and smooth transitions. Use emoji as placeholder images.",
+    "expected": {
+      "hasDoctype": true,
+      "hasViewport": true,
+      "hasTitle": true,
+      "noHorizontalOverflow": true,
+      "noConsoleErrors": true
+    }
+  },
+  {
+    "id": "budget-tracker",
+    "name": "Budget Tracker",
+    "prompt": "A personal budget tracker with income/expense entries, category selection, balance display, and monthly summary. Persist data to localStorage. Use a green/red color scheme for positive/negative values.",
+    "expected": {
+      "hasDoctype": true,
+      "hasViewport": true,
+      "hasTitle": true,
+      "noHorizontalOverflow": true,
+      "hasLocalStorage": true,
+      "noConsoleErrors": true
+    }
+  },
+  {
+    "id": "pomodoro-timer",
+    "name": "Pomodoro Timer",
+    "prompt": "A Pomodoro timer with 25-minute work and 5-minute break intervals. Include session counter, start/pause/reset controls, and visual indicators. Use a red and green color scheme.",
+    "expected": {
+      "hasDoctype": true,
+      "hasViewport": true,
+      "hasTitle": true,
+      "noHorizontalOverflow": true,
+      "interactive": true,
+      "noConsoleErrors": true
+    }
+  },
+  {
+    "id": "weather-dashboard",
+    "name": "Weather Dashboard",
+    "prompt": "A weather dashboard showing current conditions for multiple cities. Include temperature, humidity, wind speed, and weather icons. Use a card-based layout with glass-morphism effect.",
+    "expected": {
+      "hasDoctype": true,
+      "hasViewport": true,
+      "hasTitle": true,
+      "noHorizontalOverflow": true,
+      "noConsoleErrors": true
+    }
+  },
+  {
+    "id": "task-kanban",
+    "name": "Kanban Task Board",
+    "prompt": "A kanban-style task board with Todo, In Progress, Done columns. Allow dragging tasks between columns, adding new tasks, and deleting. Use a Trello-like design with bright accent colors.",
+    "expected": {
+      "hasDoctype": true,
+      "hasViewport": true,
+      "hasTitle": true,
+      "noHorizontalOverflow": true,
+      "interactive": true,
+      "noConsoleErrors": true
+    }
+  },
+  {
+    "id": "responsive-navbar",
+    "name": "Responsive Navbar",
+    "prompt": "A responsive navigation bar that collapses into a hamburger menu on mobile. Include logo, navigation links, and mobile menu toggle. Use smooth animations for the mobile menu.",
+    "expected": {
+      "hasDoctype": true,
+      "hasViewport": true,
+      "hasTitle": true,
+      "noHorizontalOverflow": true,
+      "interactive": true,
+      "noConsoleErrors": true
+    }
   }
 ]

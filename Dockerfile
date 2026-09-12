@@ -3,7 +3,8 @@
 # Designed for VPS deployment (Hetzner CPX21/CPX31)
 
 # Use official Playwright base image with Node 22
-FROM mcr.microsoft.com/playwright:v1.54.0-jammy
+# Version must match package.json's playwright dependency
+FROM mcr.microsoft.com/playwright:v1.62.0-jammy
 
 # Set working directory
 WORKDIR /app
@@ -35,9 +36,9 @@ ENV NODE_ENV=production
 ENV PORT=8080
 ENV HOST=0.0.0.0
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD node -e "require('./dist/server/entry.server.js').validationHealthCheck().then(h => { if (!h.ok) process.exit(1) }).catch(() => process.exit(1))" || exit 1
+# Health check - uses /api/health endpoint
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8080/api/health || exit 1
 
 # Start command
 CMD ["npm", "run", "start"]

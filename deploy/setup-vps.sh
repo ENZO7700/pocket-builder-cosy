@@ -5,6 +5,12 @@
 
 set -euo pipefail
 
+# Central configuration - all paths should reference these variables
+# This ensures consistency between setup, cron, and manual operations
+CONFIG_FILE="/etc/cosy-pocket-builder.env"
+APP_DIR="/opt/cosy-pocket-builder"
+DATA_DIR="/opt/cosy-pocket-builder/data"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -148,9 +154,6 @@ fi
 # ============================================================================
 log_info "=== Setting up application directory ==="
 
-APP_DIR="/opt/cosy-pocket-builder"
-DATA_DIR="/opt/cosy-pocket-builder/data"
-
 sudo mkdir -p "$APP_DIR" "$DATA_DIR"
 sudo chown -R app:app "$APP_DIR" "$DATA_DIR"
 sudo chmod -R 755 "$APP_DIR"
@@ -271,7 +274,27 @@ sudo chown app:app "$ENV_FILE"
 sudo chmod 600 "$ENV_FILE"
 
 # ============================================================================
-# STEP 10: Setup Docker Compose
+# STEP 9.5: Create configuration file for cron and scripts
+# ============================================================================
+log_info "=== Creating configuration file ==="
+
+# Write configuration that can be sourced by cron jobs and other scripts
+sudo tee "$CONFIG_FILE" > /dev/null << EOF
+# Cosy Pocket Builder Configuration
+# This file is sourced by cron jobs and scripts for path consistency
+
+APP_DIR="$APP_DIR"
+DATA_DIR="$DATA_DIR"
+COMPOSE_FILE="$APP_DIR/docker-compose.yml"
+LOG_DIR="$DATA_DIR/logs"
+EOF
+
+sudo chown root:root "$CONFIG_FILE"
+sudo chmod 644 "$CONFIG_FILE"
+log_success "Configuration file created at $CONFIG_FILE"
+
+# ============================================================================
+# STEP 11: Setup Docker Compose
 # ============================================================================
 log_info "=== Setting up Docker Compose ==="
 
@@ -298,7 +321,7 @@ else
 fi
 
 # ============================================================================
-# STEP 11: Build and Start
+# STEP 12: Build and Start
 # ============================================================================
 log_info "=== Building and starting application ==="
 
@@ -320,7 +343,7 @@ log_info "Waiting for application to become healthy..."
 ATTEMPTS=0
 MAX_ATTEMPTS=30
 while [ $ATTEMPTS -lt $MAX_ATTEMPTS ]; do
-    if curl -sf http://localhost:3000/health > /dev/null; then
+    if curl -sf http://localhost:3000/api/health > /dev/null; then
         log_success "Application is healthy!"
         break
     fi
@@ -333,8 +356,18 @@ while [ $ATTEMPTS -lt $MAX_ATTEMPTS ]; do
     fi
 done
 
+# Verify health endpoint returns expected data
+log_info "Verifying health endpoint response..."
+HEALTH_RESPONSE=$(curl -s http://localhost:3000/api/health)
+if echo "$HEALTH_RESPONSE" | jq -e '.ok == true' > /dev/null 2>&1; then
+    log_success "Health endpoint validation passed"
+else
+    log_error "Health endpoint validation failed: $HEALTH_RESPONSE"
+    exit 1
+fi
+
 # ============================================================================
-# STEP 12: Setup Logrotate
+# STEP 13: Setup Logrotate
 # ============================================================================
 log_info "=== Setting up logrotate ==="
 
@@ -362,7 +395,7 @@ else
 fi
 
 # ============================================================================
-# STEP 13: Setup Systemd Service (Optional)
+# STEP 14: Setup Systemd Service (Optional)
 # ============================================================================
 log_info "=== Setting up systemd service (optional) ==="
 
@@ -396,7 +429,7 @@ else
 fi
 
 # ============================================================================
-# STEP 14: Final Verification
+# STEP 15: Final Verification
 # ============================================================================
 log_info "=== Final Verification ==="
 
@@ -430,7 +463,7 @@ echo ""
 
 # Show health check
 log_info "Health Check:"
-curl -s http://localhost:3000/health | jq . || echo "  Not available"
+curl -s http://localhost:3000/api/health | jq . || echo "  Not available"
 echo ""
 
 # Show next steps
@@ -451,6 +484,6 @@ echo "     - Point your domain to this server's IP"
 echo "     - Caddy will automatically provision SSL certificates"
 echo ""
 echo "  4. Verify:"
-echo "     curl -f https://yourdomain.com/health"
+echo "     curl -f https://yourdomain.com/api/health"
 echo ""
 echo "============================================================================"

@@ -568,7 +568,7 @@ export const generatePreview = createServerFn({ method: "POST" })
     );
     const signal = incomingGenerateSignal();
     try {
-      gateGenerate();
+      await gateGenerate();
     } catch (e) {
       if (e instanceof GenerateGateError) {
         applyGateHttp(e);
