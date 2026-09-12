@@ -366,6 +366,59 @@ else
 fi
 
 # ============================================================================
+# STEP 12.5: Assertion - Verify all paths and configurations
+# ============================================================================
+log_info "=== Running assertion checks ==="
+
+# Check that APP_DIR exists and has correct content
+if [ ! -d "$APP_DIR" ]; then
+    log_error "Assertion failed: APP_DIR $APP_DIR does not exist"
+    exit 1
+fi
+log_success "APP_DIR exists: $APP_DIR"
+
+# Check that docker-compose.yml exists
+if [ ! -f "$APP_DIR/docker-compose.yml" ]; then
+    log_error "Assertion failed: docker-compose.yml not found in $APP_DIR"
+    exit 1
+fi
+log_success "docker-compose.yml found"
+
+# Check that config file exists
+if [ ! -f "$CONFIG_FILE" ]; then
+    log_error "Assertion failed: Config file $CONFIG_FILE not found"
+    exit 1
+fi
+log_success "Config file exists: $CONFIG_FILE"
+
+# Verify cron will use the correct path
+if ! grep -q "$APP_DIR" "$CONFIG_FILE"; then
+    log_error "Assertion failed: CONFIG_FILE does not contain APP_DIR=$APP_DIR"
+    exit 1
+fi
+log_success "Config file contains correct APP_DIR path"
+
+# Verify validationHealth endpoint (for Docker healthcheck)
+log_info "Verifying validationHealth endpoint..."
+VALIDATION_HEALTH=$(curl -s http://localhost:3000/api/validationHealth)
+if echo "$VALIDATION_HEALTH" | jq -e '.ok == true' > /dev/null 2>&1; then
+    log_success "validationHealth endpoint validation passed"
+else
+    log_error "validationHealth endpoint validation failed: $VALIDATION_HEALTH"
+    exit 1
+fi
+
+# Verify both /api/health and /api/validationHealth work
+log_info "Verifying both health endpoints are accessible..."
+if curl -sf http://localhost:3000/api/health > /dev/null 2>&1 && \
+   curl -sf http://localhost:3000/api/validationHealth > /dev/null 2>&1; then
+    log_success "Both health endpoints are accessible"
+else
+    log_error "One or both health endpoints are not accessible"
+    exit 1
+fi
+
+# ============================================================================
 # STEP 13: Setup Logrotate
 # ============================================================================
 log_info "=== Setting up logrotate ==="
