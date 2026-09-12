@@ -43,8 +43,6 @@ export class PlaywrightBrowserPool implements BrowserPool {
           '--disable-setuid-sandbox',
           '--disable-accelerated-2d-canvas',
           '--no-first-run',
-          '--no-zygote',
-          '--single-process',
           // Block all external network traffic
           '--proxy-server=127.0.0.1:9999', // Non-existent proxy to block network
         ],
