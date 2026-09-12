@@ -15,6 +15,8 @@ import { Route as LaunchRouteImport } from './routes/launch'
 import { Route as PromptsRouteImport } from './routes/prompts'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as StudioRouteImport } from './routes/studio'
+import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as ApiValidationHealthRouteImport } from './routes/api/validationHealth'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,6 +48,16 @@ const StudioRoute = StudioRouteImport.update({
   path: '/studio',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiValidationHealthRoute = ApiValidationHealthRouteImport.update({
+  id: '/api/validationHealth',
+  path: '/api/validationHealth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -54,6 +66,8 @@ export interface FileRoutesByFullPath {
   '/prompts': typeof PromptsRoute
   '/settings': typeof SettingsRoute
   '/studio': typeof StudioRoute
+  '/api/health': typeof ApiHealthRoute
+  '/api/validationHealth': typeof ApiValidationHealthRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +76,8 @@ export interface FileRoutesByTo {
   '/prompts': typeof PromptsRoute
   '/settings': typeof SettingsRoute
   '/studio': typeof StudioRoute
+  '/api/health': typeof ApiHealthRoute
+  '/api/validationHealth': typeof ApiValidationHealthRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,13 +87,30 @@ export interface FileRoutesById {
   '/prompts': typeof PromptsRoute
   '/settings': typeof SettingsRoute
   '/studio': typeof StudioRoute
+  '/api/health': typeof ApiHealthRoute
+  '/api/validationHealth': typeof ApiValidationHealthRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/blueprints' | '/launch' | '/prompts' | '/settings' | '/studio'
+    | '/'
+    | '/blueprints'
+    | '/launch'
+    | '/prompts'
+    | '/settings'
+    | '/studio'
+    | '/api/health'
+    | '/api/validationHealth'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/blueprints' | '/launch' | '/prompts' | '/settings' | '/studio'
+  to:
+    | '/'
+    | '/blueprints'
+    | '/launch'
+    | '/prompts'
+    | '/settings'
+    | '/studio'
+    | '/api/health'
+    | '/api/validationHealth'
   id:
     | '__root__'
     | '/'
@@ -86,6 +119,8 @@ export interface FileRouteTypes {
     | '/prompts'
     | '/settings'
     | '/studio'
+    | '/api/health'
+    | '/api/validationHealth'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -95,6 +130,8 @@ export interface RootRouteChildren {
   PromptsRoute: typeof PromptsRoute
   SettingsRoute: typeof SettingsRoute
   StudioRoute: typeof StudioRoute
+  ApiHealthRoute: typeof ApiHealthRoute
+  ApiValidationHealthRoute: typeof ApiValidationHealthRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -141,6 +178,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StudioRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/validationHealth': {
+      id: '/api/validationHealth'
+      path: '/api/validationHealth'
+      fullPath: '/api/validationHealth'
+      preLoaderRoute: typeof ApiValidationHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -151,6 +202,8 @@ const rootRouteChildren: RootRouteChildren = {
   PromptsRoute: PromptsRoute,
   SettingsRoute: SettingsRoute,
   StudioRoute: StudioRoute,
+  ApiHealthRoute: ApiHealthRoute,
+  ApiValidationHealthRoute: ApiValidationHealthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -9,24 +9,28 @@ FROM mcr.microsoft.com/playwright:v1.62.0-jammy
 # Set working directory
 WORKDIR /app
 
-# Create non-root user for security
-RUN useradd -m -u 1000 app && \
-    mkdir -p /home/app && \
-    chown app:app /home/app
+# The Playwright base image already provides the non-root pwuser (UID 1000).
+# Reusing it avoids a duplicate UID error during the image build.
+RUN mkdir -p /home/pwuser /app && \
+    chown pwuser:pwuser /home/pwuser /app
 
 # Copy package files
+USER root
 COPY package.json package-lock.json* ./
 
-# Install dependencies (as non-root)
-USER app
-RUN npm ci --only=production && \
+# Install dependencies (as non-root). Vite is a dev dependency and is the
+# project's available server entrypoint, so production-only install is not
+# sufficient for this container.
+USER pwuser
+RUN npm ci && \
     npm cache clean --force
 
 # Copy application files
+USER root
 COPY . .
 
-# Ensure proper permissions
-RUN chown -R app:app /app
+# Run the application without root privileges.
+USER pwuser
 
 # Expose port
 EXPOSE 8080
@@ -41,4 +45,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8080/api/validationHealth || exit 1
 
 # Start command
-CMD ["npm", "run", "start"]
+CMD ["npm", "run", "dev"]
