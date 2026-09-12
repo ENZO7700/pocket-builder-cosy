@@ -1,36 +1,38 @@
 {
-  "url": "http://127.0.0.1:8080/",
+  "url": "http://127.0.0.1:8080/studio",
   "viewports": {
     "desktop": {
       "width": 1280,
       "height": 800,
       "status": 200,
-      "title": "Dashboard — Cozy",
+      "title": "Studio — Cozy AI Studio",
       "hasCanvas": false,
-      "bodyTextLen": 258,
-      "bodyTextHash": "f09121b133d4435e18e80ef6fc4d232233877d95b4bee787f002ca175d48f2d8",
-      "bodyTextPrefix": "Cozy Dashboard Projekty Nastavenie Promty Blueprinty PREHĽAD Das",
+      "bodyTextLen": 59,
+      "bodyTextHash": "e27c9c57cd9f2391420ad1027385dcb57e97090d265b6283ba9f5abee6729bcf",
+      "bodyTextPrefix": "Cozy Dashboard Projekty Promty Blueprinty Launch Nastavenie",
       "horizontalOverflow": false,
       "consoleErrors": [],
       "pageErrors": [],
-      "screenshot": "/workspace/screenshots/app-builder-preview.png"
+      "screenshot": "C:\\dev\\Active\\pocket-builder-cosy\\screenshots\\app-builder-preview.png"
     },
     "mobile": {
       "width": 390,
       "height": 844,
       "status": 200,
-      "title": "Dashboard — Cozy",
+      "title": "Studio — Cozy AI Studio",
       "hasCanvas": false,
-      "bodyTextLen": 263,
-      "bodyTextHash": "ff69d72cb9b021d0e6ba0198788f87e8bc4ee3d01009a3d697ffe97d51510720",
-      "bodyTextPrefix": "Cozy Dashboard Projekty Nastavenie Promty Blueprinty Cozy PREHĽA",
+      "bodyTextLen": 64,
+      "bodyTextHash": "3f9c9c55a165f2ba87a1611c2298a546b0fd06efac098934d8cc7c43b2b6a42a",
+      "bodyTextPrefix": "Cozy Dashboard Projekty Promty Blueprinty Launch Nastavenie Cozy",
       "horizontalOverflow": false,
       "consoleErrors": [],
       "pageErrors": [],
-      "screenshot": "/workspace/screenshots/app-builder-preview-mobile.png"
+      "screenshot": "C:\\dev\\Active\\pocket-builder-cosy\\screenshots\\app-builder-preview-mobile.png"
     }
   },
-  "brandWarnings": [],
+  "brandWarnings": [
+    "BRAND NOTE: no custom public/og.jpg — the platform will serve the og.grok.me placeholder. Custom cards are the default for games of every kind (DOM board/word games included), whimsical apps, creative tools, and brand-forward pages — only plain utilities (converters, CRUD trackers, admin dashboards) keep the placeholder. If this app is not a plain utility, finish the brand-asset pass per \\workspace\\.grok\\skills\\og\\SKILL.md."
+  ],
   "authWarnings": [],
-  "verdictFile": "/workspace/screenshots/app-builder-preview.json"
+  "verdictFile": "C:\\dev\\Active\\pocket-builder-cosy\\screenshots\\app-builder-preview.json"
 }
