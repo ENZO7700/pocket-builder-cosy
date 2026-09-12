@@ -1,0 +1,76 @@
+// Caddyfile for Cosy Pocket Builder
+// Automatic HTTPS with Let's Encrypt
+
+{
+    // Global options
+    email {env.EMAIL}
+    
+    // Performance tuning
+    servers :443 {
+        protocols h1 h2 h3
+        max_requests 1000
+    }
+}
+
+{env.DOMAIN}:443 {
+    // Reverse proxy to app container
+    reverse_proxy app:8080 {
+        header_up Host {http.reverse_proxy.upstream.host}
+        header_up X-Forwarded-Proto {http.request.scheme}
+        header_up X-Forwarded-For {http.request.remote}
+        header_up X-Real-IP {http.request.remote}
+    }
+    
+    // Health check endpoint (public)
+    handle /health {
+        reverse_proxy app:8080 {
+            header_up Host {http.reverse_proxy.upstream.host}
+        }
+    }
+    
+    // Enable HTTP/2 server push
+    http2_server_push
+    
+    // Security headers
+    header {
+        X-Frame-Options "DENY"
+        X-Content-Type-Options "nosniff"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "geolocation=(), microphone=(), camera=()"
+    }
+    
+    // Caching for static assets
+    handle_path /assets/* {
+        root * /app/dist/client/assets
+        try_files {path} /404.html
+        file_server {
+            precompressed gzip
+        }
+        header Cache-Control "public, max-age=31536000, immutable"
+    }
+    
+    // Log format
+    log {
+        output file /var/log/caddy/access.log {
+            roll_size 10MiB
+            roll_keep 5
+        }
+        format console
+    }
+    
+    // Error handling
+    handle_errors {
+        respond "Error {http.error.status_code}: {http.error.status_text}"
+    }
+}
+
+// Redirect HTTP to HTTPS
+{env.DOMAIN}:80 {
+    redir https://{env.DOMAIN}{uri} permanent
+}
+
+// Localhost development (no HTTPS)
+localhost:80 {
+    reverse_proxy app:8080
+}

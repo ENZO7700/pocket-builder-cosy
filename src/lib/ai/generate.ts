@@ -1,6 +1,16 @@
 import { createServerFn } from "@tanstack/react-start";
 import { abortKind } from "@/lib/ai/abort-signal";
 import { injectCozyElements } from "@/lib/preview/cozy-elements";
+// Inline ValidationError type to avoid server-only import
+// Original: import type { ValidationError } from "@/lib/ai/validation/types.server";
+interface ValidationError {
+  type: 'console' | 'overflow' | 'syntax' | 'structure' | 'network' | 'timeout';
+  message: string;
+  severity: 'critical' | 'warning';
+  details?: Record<string, unknown>;
+}
+// Dynamic import to avoid client-side bundling of server-only modules
+// import { validationHealthCheck, getValidationStrategy, getValidationConfig } from "@/lib/ai/validation/index.server";
 
 export type AiProvider = "mistral" | "grok";
 
@@ -30,6 +40,13 @@ export type AiStatus = {
 // Enhanced system prompts for high-quality generation
 const MAX_TOKENS = 8192;
 const TEMPERATURE = 0.3;
+
+// Self-repair loop configuration
+// Note: Full validation config is now in src/lib/ai/validation/index.ts
+// These are kept here for backwards compatibility
+const SELF_REPAIR_ENABLED = process.env.SELF_REPAIR_ENABLED !== 'false';
+const MAX_REPAIR_RETRIES = Number(process.env.MAX_REPAIR_RETRIES || 2);
+const VALIDATION_TIMEOUT_MS = Number(process.env.VALIDATION_TIMEOUT_MS || 5000);
 
 const CREATE_SYSTEM = `You are a senior front-end engineer and product designer. You build polished,
 production-quality, self-contained single-file web apps from a short user brief.
@@ -218,6 +235,249 @@ function pack(text: string, provider: AiProvider, model: string): GenerateResult
   };
 }
 
+/**
+ * Self-repair loop: generates HTML and validates it, retrying with specific
+ * error feedback if validation fails. Max 2 retries by default.
+ */
+async function generateWithRepair(
+  prompt: string,
+  html?: string,
+  retryCount: number = 0,
+  signal?: AbortSignal
+): Promise<GenerateResult> {
+  const revising = Boolean(html);
+  const system = revising ? REVISE_SYSTEM : CREATE_SYSTEM;
+  const generationPrompt = revising
+    ? `Change request:\n${prompt || "Tighten the layout."}\n\nCurrent HTML:\n${html}`
+    : prompt || "A calm personal studio landing page.";
+
+  // Check if we should abort
+  if (signal?.aborted) {
+    return { ok: false, error: "Cancelled", aborted: true };
+  }
+
+  const mistral = mistralKey();
+  const xai = grokKey();
+  
+  if (!mistral && !xai) {
+    return { 
+      ok: false, 
+      error: "No AI API key configured. Set MISTRAL_API_KEY (primary) or XAI_API_KEY (Grok fallback)", 
+      status: 503 
+    };
+  }
+
+  // Generate with current provider logic
+  let result: { ok: true; text: string } | { ok: false; error: string; aborted?: boolean };
+  
+  // Try Mistral first (primary)
+  if (mistral) {
+    result = await complete({
+      url: "https://api.mistral.ai/v1/chat/completions",
+      key: mistral,
+      model: "mistral-large-latest",
+      system,
+      prompt: generationPrompt,
+      maxTokens: MAX_TOKENS,
+      signal: signal || new AbortController().signal,
+    });
+    
+    if (result.ok) {
+      // Validate if self-repair is enabled
+      if (SELF_REPAIR_ENABLED) {
+        const { validateHtml } = await import("./validation/index.server");
+        const validation = await validateHtml(result.text);
+        
+        if (validation.ok) {
+          // Success - pack and return
+          return pack(result.text, "mistral", "mistral-large-latest");
+        }
+        
+        // Validation failed - check if we should retry
+        if (retryCount >= MAX_REPAIR_RETRIES) {
+          // Max retries reached, return best attempt with warnings
+          console.warn(`Self-repair: Max retries (${MAX_REPAIR_RETRIES}) reached. Errors:`, validation.errors);
+          return pack(result.text, "mistral", "mistral-large-latest");
+        }
+        
+        // Build repair prompt
+        const errorMessages = validation.errors
+          .map((e, i) => `${i + 1}. [${e.type.toUpperCase()}] ${e.message}`)
+          .join('\n');
+        
+        const repairPrompt = `Fix the following critical issues in your previous output:
+
+ERRORS FOUND:
+${errorMessages}
+
+INSTRUCTIONS:
+- Return ONLY the complete corrected HTML document from <!DOCTYPE html> through </html>
+- Fix ALL listed errors
+- Do NOT introduce new errors
+- Maintain the same design and functionality as the original
+- Ensure no console errors, no horizontal overflow, and valid HTML structure
+- Use the same styling and content from the original
+
+Previous HTML:
+${result.text}`;
+        
+        // Retry with repair using REVISE_SYSTEM
+        console.log(`Self-repair: Attempting fix for ${validation.errors.length} errors (attempt ${retryCount + 1}/${MAX_REPAIR_RETRIES})`);
+        return generateWithRepair(
+          repairPrompt,
+          undefined, // Not revising, generating fresh
+          retryCount + 1,
+          signal
+        );
+      } else {
+        // Self-repair disabled, use normal flow
+        return pack(result.text, "mistral", "mistral-large-latest");
+      }
+    }
+    
+    if (result.aborted) {
+      return { ok: false, error: "Cancelled", status: 499, aborted: true };
+    }
+    
+    // If Mistral failed but we have Grok as fallback, try Grok
+    if (xai) {
+      const grokResult = await complete({
+        url: "https://api.x.ai/v1/chat/completions",
+        key: xai,
+        model: "grok-4.5",
+        system,
+        prompt: generationPrompt,
+        maxTokens: MAX_TOKENS,
+        signal: signal || new AbortController().signal,
+      });
+      
+      if (grokResult.ok) {
+        // Validate if self-repair is enabled
+        if (SELF_REPAIR_ENABLED) {
+          const { validateHtml } = await import("./validation/index.server");
+          const validation = await validateHtml(grokResult.text);
+          
+          if (validation.ok) {
+            return pack(grokResult.text, "grok", "grok-4.5");
+          }
+          
+          if (retryCount >= MAX_REPAIR_RETRIES) {
+            console.warn(`Self-repair: Max retries (${MAX_REPAIR_RETRIES}) reached. Errors:`, validation.errors);
+            return pack(grokResult.text, "grok", "grok-4.5");
+          }
+          
+          const errorMessages = validation.errors
+            .map((e, i) => `${i + 1}. [${e.type.toUpperCase()}] ${e.message}`)
+            .join('\n');
+          
+          const repairPrompt = `Fix the following critical issues in your previous output:
+
+ERRORS FOUND:
+${errorMessages}
+
+INSTRUCTIONS:
+- Return ONLY the complete corrected HTML document from <!DOCTYPE html> through </html>
+- Fix ALL listed errors
+- Do NOT introduce new errors
+- Maintain the same design and functionality as the original
+- Ensure no console errors, no horizontal overflow, and valid HTML structure
+- Use the same styling and content from the original
+
+Previous HTML:
+${grokResult.text}`;
+          
+          console.log(`Self-repair: Attempting fix for ${validation.errors.length} errors (attempt ${retryCount + 1}/${MAX_REPAIR_RETRIES})`);
+          return generateWithRepair(
+            repairPrompt,
+            undefined,
+            retryCount + 1,
+            signal
+          );
+        } else {
+          return pack(grokResult.text, "grok", "grok-4.5");
+        }
+      }
+      
+      if (grokResult.aborted) {
+        return { ok: false, error: "Cancelled", status: 499, aborted: true };
+      }
+      
+      return { ok: false, error: grokResult.error };
+    }
+    
+    return { ok: false, error: result.error };
+  }
+  
+  // Only Grok is configured
+  if (xai) {
+    result = await complete({
+      url: "https://api.x.ai/v1/chat/completions",
+      key: xai,
+      model: "grok-4.5",
+      system,
+      prompt: generationPrompt,
+      maxTokens: MAX_TOKENS,
+      signal: signal || new AbortController().signal,
+    });
+    
+    if (result.ok) {
+      // Validate if self-repair is enabled
+      if (SELF_REPAIR_ENABLED) {
+        const { validateHtml } = await import("./validation/index.server");
+        const validation = await validateHtml(result.text);
+        
+        if (validation.ok) {
+          return pack(result.text, "grok", "grok-4.5");
+        }
+        
+        if (retryCount >= MAX_REPAIR_RETRIES) {
+          console.warn(`Self-repair: Max retries (${MAX_REPAIR_RETRIES}) reached. Errors:`, validation.errors);
+          return pack(result.text, "grok", "grok-4.5");
+        }
+        
+        const errorMessages = validation.errors
+          .map((e, i) => `${i + 1}. [${e.type.toUpperCase()}] ${e.message}`)
+          .join('\n');
+        
+        const repairPrompt = `Fix the following critical issues in your previous output:
+
+ERRORS FOUND:
+${errorMessages}
+
+INSTRUCTIONS:
+- Return ONLY the complete corrected HTML document from <!DOCTYPE html> through </html>
+- Fix ALL listed errors
+- Do NOT introduce new errors
+- Maintain the same design and functionality as the original
+- Ensure no console errors, no horizontal overflow, and valid HTML structure
+- Use the same styling and content from the original
+
+Previous HTML:
+${result.text}`;
+        
+        console.log(`Self-repair: Attempting fix for ${validation.errors.length} errors (attempt ${retryCount + 1}/${MAX_REPAIR_RETRIES})`);
+        return generateWithRepair(
+          repairPrompt,
+          undefined,
+          retryCount + 1,
+          signal
+        );
+      } else {
+        return pack(result.text, "grok", "grok-4.5");
+      }
+    }
+    
+    if (result.aborted) {
+      return { ok: false, error: "Cancelled", status: 499, aborted: true };
+    }
+    
+    return { ok: false, error: result.error };
+  }
+  
+  // Should never reach here due to the check above
+  return { ok: false, error: "No AI provider available", status: 503 };
+}
+
 export const getAiStatus = createServerFn({ method: "GET" }).handler(
   async (): Promise<AiStatus> => ({
     mistral: Boolean(mistralKey()),
@@ -226,6 +486,63 @@ export const getAiStatus = createServerFn({ method: "GET" }).handler(
       (process.env.GENERATE_ACCESS_TOKEN ?? process.env.API_SECRET ?? "").trim(),
     ),
   }),
+);
+
+export const validationHealth = createServerFn({ method: "GET" }).handler(
+  async (): Promise<{
+    ok: boolean;
+    strategy: string;
+    browser: 'ok' | 'failed' | 'not_configured';
+    static: 'ok';
+    browserPoolSize?: number;
+    activePages?: number;
+    config: {
+      enabled: boolean;
+      maxRetries: number;
+      timeoutMs: number;
+      browserPoolSize: number;
+      maxHtmlSize: number;
+      strategy: string;
+    };
+  }> => {
+    try {
+      // Dynamic import to avoid client-side bundling
+      const { validationHealthCheck, getValidationStrategy, getValidationConfig } = await import("@/lib/ai/validation/index.server");
+      
+      const healthResult = await validationHealthCheck();
+      const strategy = getValidationStrategy();
+      const config = getValidationConfig();
+
+      const details = healthResult.details as Record<string, unknown> | undefined;
+      
+      return {
+        ok: healthResult.ok,
+        strategy,
+        browser: details && 'browser' in details
+          ? details.browser as 'ok' | 'failed' | 'not_configured'
+          : 'not_configured',
+        static: 'ok',
+        browserPoolSize: details && typeof details.poolSize === 'number' ? details.poolSize : undefined,
+        activePages: details && typeof details.activePages === 'number' ? details.activePages : undefined,
+        config
+      };
+    } catch {
+      return {
+        ok: true,
+        strategy: 'none',
+        browser: 'failed',
+        static: 'ok',
+        config: {
+          enabled: SELF_REPAIR_ENABLED,
+          maxRetries: MAX_REPAIR_RETRIES,
+          timeoutMs: VALIDATION_TIMEOUT_MS,
+          browserPoolSize: Number(process.env.BROWSER_POOL_SIZE || 2),
+          maxHtmlSize: Number(process.env.VALIDATION_MAX_HTML_SIZE || 500000),
+          strategy: process.env.VALIDATION_STRATEGY || 'auto'
+        }
+      };
+    }
+  }
 );
 
 export const redeemGenerateAccess = createServerFn({ method: "POST" })
@@ -274,94 +591,6 @@ export const generatePreview = createServerFn({ method: "POST" })
       return { ok: false, error: "Brief is empty", status: 400 };
     }
 
-    const revising = Boolean(data.html);
-    const system = revising ? REVISE_SYSTEM : CREATE_SYSTEM;
-    const prompt = revising
-      ? `Change request:\n${data.prompt || "Tighten the layout."}\n\nCurrent HTML:\n${data.html}`
-      : data.prompt || "A calm personal studio landing page.";
-
-    const mistral = mistralKey();
-    const xai = grokKey();
-    
-    if (!mistral && !xai) {
-      return { 
-        ok: false, 
-        error: "No AI API key configured. Set MISTRAL_API_KEY (primary) or XAI_API_KEY (Grok fallback)", 
-        status: 503 
-      };
-    }
-
-    // Try Mistral first (primary)
-    if (mistral) {
-      const mistralResult = await complete({
-        url: "https://api.mistral.ai/v1/chat/completions",
-        key: mistral,
-        model: "mistral-large-latest",
-        system,
-        prompt,
-        maxTokens: MAX_TOKENS,
-        signal,
-      });
-
-      if (mistralResult.ok) {
-        const packed = pack(mistralResult.text, "mistral", "mistral-large-latest");
-        if (packed.ok) return packed;
-        return { ok: false, error: packed.error };
-      }
-      if (mistralResult.aborted) {
-        logGenerateAbort(signal);
-        return { ok: false, error: "Cancelled", status: 499, aborted: true };
-      }
-      // If Mistral failed but we have Grok as fallback, try Grok
-      if (xai) {
-        const grokResult = await complete({
-          url: "https://api.x.ai/v1/chat/completions",
-          key: xai,
-          model: "grok-4.5",
-          system,
-          prompt,
-          maxTokens: MAX_TOKENS,
-          signal,
-        });
-
-        if (grokResult.ok) {
-          const packed = pack(grokResult.text, "grok", "grok-4.5");
-          if (packed.ok) return packed;
-          return { ok: false, error: packed.error };
-        }
-        if (grokResult.aborted) {
-          logGenerateAbort(signal);
-          return { ok: false, error: "Cancelled", status: 499, aborted: true };
-        }
-        return { ok: false, error: grokResult.error };
-      }
-      return { ok: false, error: mistralResult.error };
-    }
-
-    // Only Grok is configured
-    if (xai) {
-      const grokResult = await complete({
-        url: "https://api.x.ai/v1/chat/completions",
-        key: xai,
-        model: "grok-4.5",
-        system,
-        prompt,
-        maxTokens: MAX_TOKENS,
-        signal,
-      });
-
-      if (grokResult.ok) {
-        const packed = pack(grokResult.text, "grok", "grok-4.5");
-        if (packed.ok) return packed;
-        return { ok: false, error: packed.error };
-      }
-      if (grokResult.aborted) {
-        logGenerateAbort(signal);
-        return { ok: false, error: "Cancelled", status: 499, aborted: true };
-      }
-      return { ok: false, error: grokResult.error };
-    }
-
-    // Should never reach here due to the check above
-    return { ok: false, error: "No AI provider available", status: 503 };
+    // Use the self-repair loop
+    return generateWithRepair(data.prompt, data.html, 0, signal);
   });
