@@ -36,9 +36,9 @@ ENV NODE_ENV=production
 ENV PORT=8080
 ENV HOST=0.0.0.0
 
-# Health check - uses /api/health endpoint
+# Health check - uses /api/validationHealth endpoint
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:8080/api/health || exit 1
+    CMD curl -f http://localhost:8080/api/validationHealth || exit 1
 
 # Start command
 CMD ["npm", "run", "start"]

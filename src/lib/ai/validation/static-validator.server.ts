@@ -101,6 +101,57 @@ export class StaticValidator implements Validator {
       }
     });
 
+    // External URL detection in CSS (critical)
+    const externalUrlPatterns = [
+      /background-image:\s*url\(\s*['"]https?:\/\/[^'"]+['"]\s*\)/i,
+      /background:\s*url\(\s*['"]https?:\/\/[^'"]+['"]\s*\)/i,
+      /src:\s*url\(\s*['"]https?:\/\/[^'"]+['"]\s*\)/i,
+    ];
+    
+    externalUrlPatterns.forEach((pattern) => {
+      const matches = html.match(pattern);
+      if (matches && matches.length > 0) {
+        errors.push({
+          type: 'network',
+          message: `External URL in CSS: ${matches[0].slice(0, 100)}...`,
+          severity: 'critical'
+        });
+      }
+    });
+
+    // External URL detection in HTML (critical)
+    const externalHtmlPatterns = [
+      /<img[^>]+src=['"]https?:\/\/[^'"]+['"][^>]*>/i,
+      /<link[^>]+href=['"]https?:\/\/[^'"]+['"][^>]*>/i,
+      /<script[^>]+src=['"]https?:\/\/[^'"]+['"][^>]*>/i,
+      /<iframe[^>]+src=['"]https?:\/\/[^'"]+['"][^>]*>/i,
+    ];
+    
+    externalHtmlPatterns.forEach((pattern) => {
+      const matches = html.match(pattern);
+      if (matches && matches.length > 0) {
+        errors.push({
+          type: 'network',
+          message: `External URL in HTML: ${matches[0].slice(0, 100)}...`,
+          severity: 'critical'
+        });
+      }
+    });
+
+    // Missing alt attribute detection (critical)
+    // Simple approach: count <img tags and img tags with alt attributes
+    // If there are more img tags than alt attributes, some are missing alt
+    const imgCount = (html.match(/<img\b/gi) || []).length;
+    const imgWithAltCount = (html.match(/<img[\s\S]*?\balt\s*=\s*(['"][^'"]*['"]|\S+)/gi) || []).length;
+    
+    if (imgCount > imgWithAltCount) {
+      errors.push({
+        type: 'structure',
+        message: `Missing alt attribute on ${imgCount - imgWithAltCount} <img> tag(s)`,
+        severity: 'critical'
+      });
+    }
+
     // Script tag checks
     const scriptMatches = html.match(/<script[^>]*>([\s\S]*?)<\/script>/gi) || [];
     scriptMatches.forEach((scriptTag, index) => {

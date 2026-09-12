@@ -47,7 +47,7 @@ coverage/
 .data/
 
 # DOCS - Internal documentation (not for public repo)
-DOCS/
+/DOCS/
 
 # Screenshots and test artifacts
 screenshots/

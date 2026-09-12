@@ -1,22 +1,7 @@
 // Note: redis package must be installed (npm install redis)
 // Using dynamic import to avoid build-time dependency issues
 import type { QuotaStore, QuotaBucket } from './generate-quota';
-
-type RedisClientType = {
-  connect: () => Promise<void>;
-  quit: () => Promise<void>;
-  ping: () => Promise<string>;
-  hGetAll: (key: string) => Promise<Record<string, string>>;
-  hSet: (key: string, value: Record<string, string | number>) => Promise<void>;
-  expire: (key: string, seconds: number) => Promise<void>;
-  on: (event: string, handler: (...args: unknown[]) => void) => void;
-};
-
-// For now, create a mock Redis client type
-// In production, use: import { createClient, type RedisClientType } from 'redis';
-function createClient(options: { url: string }): RedisClientType {
-  throw new Error('Redis client not available. Install redis package: npm install redis');
-}
+import { createClient, type RedisClientType } from 'redis';
 
 interface RedisQuotaBucket {
   hits: string; // JSON array of timestamps
