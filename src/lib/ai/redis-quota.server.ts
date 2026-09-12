@@ -1,7 +1,7 @@
 // Note: redis package must be installed (npm install redis)
 // Using dynamic import to avoid build-time dependency issues
 import type { QuotaStore, QuotaBucket } from './generate-quota';
-import { createClient, type RedisClientType } from 'redis';
+import { createClient } from 'redis';
 
 interface RedisQuotaBucket {
   hits: string; // JSON array of timestamps
@@ -14,7 +14,7 @@ interface RedisQuotaBucket {
  * Uses Redis for persistence across container restarts
  */
 export class RedisQuotaStore implements QuotaStore {
-  private client: RedisClientType | null = null;
+  private client: ReturnType<typeof createClient> | null = null;
   private readonly prefix: string;
   private connected = false;
 
@@ -30,7 +30,7 @@ export class RedisQuotaStore implements QuotaStore {
     const redisUrl = process.env.REDIS_URL || process.env.REDIS_MODULE_URL || 'redis://localhost:6379';
     
     try {
-      this.client = createClient({ url: redisUrl }) as RedisClientType;
+      this.client = createClient({ url: redisUrl });
       
       // Handle connection errors
       this.client.on('error', (err: unknown) => {
@@ -56,8 +56,11 @@ export class RedisQuotaStore implements QuotaStore {
     }
     if (!this.connected) {
       try {
-        await this.client.ping();
-        this.connected = true;
+        // In Redis v4, ping returns "PONG" string
+        const pong = await this.client.ping();
+        if (pong === 'PONG') {
+          this.connected = true;
+        }
       } catch {
         // Try to reconnect
         this.connected = await this.connect();
@@ -76,7 +79,8 @@ export class RedisQuotaStore implements QuotaStore {
 
     try {
       const redisKey = `${this.prefix}:${key}`;
-      const data = await this.client.hGetAll(redisKey);
+      // In Redis v4, use the command API
+      const data = await this.client.hGetAll(redisKey) as Record<string, string>;
       
       if (!data || !data.hits) {
         return undefined;
@@ -109,14 +113,12 @@ export class RedisQuotaStore implements QuotaStore {
 
     try {
       const redisKey = `${this.prefix}:${key}`;
-      // Convert to Record<string, string | number> for hSet
-      const redisValue: Record<string, string | number> = {
+      // In Redis v4, hSet accepts an object
+      await this.client.hSet(redisKey, {
         hits: JSON.stringify(value.hits),
         day: value.day,
-        dayCount: value.dayCount
-      };
-
-      await this.client.hSet(redisKey, redisValue);
+        dayCount: String(value.dayCount)
+      });
       // Set TTL to 24 hours to automatically clean up old entries
       await this.client.expire(redisKey, 86400);
     } catch (error) {
