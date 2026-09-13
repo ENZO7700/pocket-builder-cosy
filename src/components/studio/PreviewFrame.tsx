@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 import { injectCozyElements } from "@/lib/preview/cozy-elements";
 import { PREVIEW_SANDBOX } from "@/lib/preview/sandbox";
+import { morphIframeDocument } from "@/lib/preview/live-morpher";
+import { shouldReloadPreview } from "@/lib/preview/dom-patch-utils";
 
 export { PREVIEW_SANDBOX };
 
@@ -9,6 +11,7 @@ export { PREVIEW_SANDBOX };
 export function PreviewFrame({ html, title }: { html: string; title: string }) {
   const ref = useRef<HTMLIFrameElement>(null);
   const urlRef = useRef("");
+  const previousHtmlRef = useRef("");
 
   useEffect(() => {
     const iframe = ref.current;
@@ -19,18 +22,33 @@ export function PreviewFrame({ html, title }: { html: string; title: string }) {
         URL.revokeObjectURL(urlRef.current);
         urlRef.current = "";
       }
+      previousHtmlRef.current = "";
       return;
     }
 
     const next = injectCozyElements(html);
+    const previous = previousHtmlRef.current;
+    if (
+      iframe.contentDocument?.body &&
+      previous &&
+      !shouldReloadPreview(previous, html) &&
+      morphIframeDocument(iframe, html)
+    ) {
+      previousHtmlRef.current = html;
+      iframe.dataset.patch = "morphed";
+      iframe.dataset.patchReason = "html-changed";
+      return;
+    }
+
     const blob = new Blob([next], { type: "text/html;charset=utf-8" });
     const url = URL.createObjectURL(blob);
-    const previous = urlRef.current;
+    const previousUrl = urlRef.current;
     urlRef.current = url;
+    previousHtmlRef.current = html;
     iframe.dataset.patch = "reloaded";
-    iframe.dataset.patchReason = previous ? "html-changed" : "first";
+    iframe.dataset.patchReason = previousUrl ? "html-changed" : "first";
     iframe.src = url;
-    if (previous) URL.revokeObjectURL(previous);
+    if (previousUrl) URL.revokeObjectURL(previousUrl);
 
     return () => {
       if (urlRef.current === url) {

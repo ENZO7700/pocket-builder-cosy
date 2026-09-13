@@ -21,17 +21,23 @@ services:
       - BROWSER_POOL_SIZE=2
       - VALIDATION_MAX_HTML_SIZE=500000
       
-      # AI Provider (required)
+      # AI Providers
       - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
 
       # Authentication & WordPress Connector
       - VITE_AUTH_ENABLED=${VITE_AUTH_ENABLED:-true}
       - BETTER_AUTH_URL=${BETTER_AUTH_URL:-https://cozy.h4ck3d.me}
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
       - WORDPRESS_ENCRYPTION_KEY=${WORDPRESS_ENCRYPTION_KEY}
+      - PGLITE_DATA_DIR=${PGLITE_DATA_DIR:-/app/data/pglite}
       
       # Optional: Redis for rate limiting
       - REDIS_URL=redis://redis:6379
+    mem_limit: 1536m
+    mem_reservation: 512m
+    cpus: 1.5
     volumes:
       # Persistent data
       - ./data:/app/data

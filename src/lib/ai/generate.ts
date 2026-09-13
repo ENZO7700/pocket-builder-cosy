@@ -3,7 +3,7 @@ import { abortKind } from "@/lib/ai/abort-signal";
 import { injectCozyElements } from "@/lib/preview/cozy-elements";
 
 
-export type AiProvider = "mistral";
+export type AiProvider = "mistral" | "gemini" | "openai";
 
 export type GenerateResult =
   | {
@@ -24,6 +24,8 @@ export type GenerateResult =
 
 export type AiStatus = {
   mistral: boolean;
+  gemini: boolean;
+  openai: boolean;
   locked: boolean;
 };
 
@@ -32,8 +34,6 @@ const MAX_TOKENS = 8192;
 const TEMPERATURE = 0.3;
 
 // Self-repair loop configuration
-// Note: Full validation config is now in src/lib/ai/validation/index.ts
-// These are kept here for backwards compatibility
 const SELF_REPAIR_ENABLED = process.env.SELF_REPAIR_ENABLED !== 'false';
 const MAX_REPAIR_RETRIES = Number(process.env.MAX_REPAIR_RETRIES || 2);
 const VALIDATION_TIMEOUT_MS = Number(process.env.VALIDATION_TIMEOUT_MS || 5000);
@@ -138,7 +138,52 @@ function mistralKey(): string | null {
   return (process.env.MISTRAL_API_KEY ?? "").trim() || null;
 }
 
+function geminiKey(): string | null {
+  return (process.env.GEMINI_API_KEY ?? "").trim() || null;
+}
 
+function openaiKey(): string | null {
+  return (process.env.OPENAI_API_KEY ?? "").trim() || null;
+}
+
+interface ProviderConfig {
+  provider: AiProvider;
+  url: string;
+  key: string;
+  model: string;
+}
+
+function getAvailableProviders(): ProviderConfig[] {
+  const providers: ProviderConfig[] = [];
+  const mistral = mistralKey();
+  if (mistral) {
+    providers.push({
+      provider: "mistral",
+      url: "https://api.mistral.ai/v1/chat/completions",
+      key: mistral,
+      model: process.env.MISTRAL_MODEL || "mistral-large-latest",
+    });
+  }
+  const gemini = geminiKey();
+  if (gemini) {
+    providers.push({
+      provider: "gemini",
+      url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+      key: gemini,
+      model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+    });
+  }
+  const openai = openaiKey();
+  if (openai) {
+    providers.push({
+      provider: "openai",
+      url: "https://api.openai.com/v1/chat/completions",
+      key: openai,
+      model: process.env.OPENAI_MODEL || "gpt-4o",
+    });
+  }
+  return providers;
+}
 
 function extractHtml(text: string): string | null {
   const fenced = text.match(/```html\s*([\s\S]*?)```/i);
@@ -233,6 +278,58 @@ function pack(text: string, provider: AiProvider, model: string): GenerateResult
   };
 }
 
+async function generateWithCascade(opts: {
+  system: string;
+  prompt: string;
+  signal: AbortSignal;
+}): Promise<
+  | { ok: true; text: string; provider: AiProvider; model: string }
+  | { ok: false; error: string; status?: number; aborted?: boolean }
+> {
+  const providers = getAvailableProviders();
+  if (providers.length === 0) {
+    return {
+      ok: false,
+      error: "No AI API key configured. Set MISTRAL_API_KEY, GEMINI_API_KEY, or OPENAI_API_KEY",
+      status: 503,
+    };
+  }
+
+  const errors: string[] = [];
+  for (const cfg of providers) {
+    if (opts.signal.aborted) {
+      return { ok: false, error: "Cancelled", aborted: true, status: 499 };
+    }
+
+    const res = await complete({
+      url: cfg.url,
+      key: cfg.key,
+      model: cfg.model,
+      system: opts.system,
+      prompt: opts.prompt,
+      maxTokens: MAX_TOKENS,
+      signal: opts.signal,
+    });
+
+    if (res.ok) {
+      return { ok: true, text: res.text, provider: cfg.provider, model: cfg.model };
+    }
+
+    if (res.aborted) {
+      return { ok: false, error: "Cancelled", aborted: true, status: 499 };
+    }
+
+    console.warn(`[AI Studio] ${cfg.provider} failed: ${res.error}. Trying next provider...`);
+    errors.push(`${cfg.provider}: ${res.error}`);
+  }
+
+  return {
+    ok: false,
+    error: `All AI providers failed: ${errors.join(" | ")}`,
+    status: 502,
+  };
+}
+
 /**
  * Self-repair loop: generates HTML and validates it, retrying with specific
  * error feedback if validation fails. Max 2 retries by default.
@@ -249,30 +346,18 @@ async function generateWithRepair(
     ? `Change request:\n${prompt || "Tighten the layout."}\n\nCurrent HTML:\n${html}`
     : prompt || "A calm personal studio landing page.";
 
+  const activeSignal = signal || new AbortController().signal;
+
   // Check if we should abort
-  if (signal?.aborted) {
+  if (activeSignal.aborted) {
     return { ok: false, error: "Cancelled", aborted: true };
   }
 
-  const mistral = mistralKey();
-
-  if (!mistral) {
-    return { 
-      ok: false, 
-      error: "No AI API key configured. Set MISTRAL_API_KEY", 
-      status: 503 
-    };
-  }
-
-  // Generate with Mistral
-  const result: { ok: true; text: string } | { ok: false; error: string; aborted?: boolean } = await complete({
-    url: "https://api.mistral.ai/v1/chat/completions",
-    key: mistral,
-    model: "mistral-large-latest",
+  // Generate with cascading failover
+  const result = await generateWithCascade({
     system,
     prompt: generationPrompt,
-    maxTokens: MAX_TOKENS,
-    signal: signal || new AbortController().signal,
+    signal: activeSignal,
   });
   
   if (result.ok) {
@@ -283,14 +368,14 @@ async function generateWithRepair(
       
       if (validation.ok) {
         // Success - pack and return
-        return pack(result.text, "mistral", "mistral-large-latest");
+        return pack(result.text, result.provider, result.model);
       }
       
       // Validation failed - check if we should retry
       if (retryCount >= MAX_REPAIR_RETRIES) {
         // Max retries reached, return best attempt with warnings
         console.warn(`Self-repair: Max retries (${MAX_REPAIR_RETRIES}) reached. Errors:`, validation.errors);
-        return pack(result.text, "mistral", "mistral-large-latest");
+        return pack(result.text, result.provider, result.model);
       }
       
       // Build repair prompt
@@ -320,11 +405,11 @@ ${result.text}`;
         repairPrompt,
         undefined, // Not revising, generating fresh
         retryCount + 1,
-        signal
+        activeSignal
       );
     } else {
       // Self-repair disabled, use normal flow
-      return pack(result.text, "mistral", "mistral-large-latest");
+      return pack(result.text, result.provider, result.model);
     }
   }
   
@@ -332,12 +417,14 @@ ${result.text}`;
     return { ok: false, error: "Cancelled", status: 499, aborted: true };
   }
   
-  return { ok: false, error: result.error };
+  return { ok: false, error: result.error, status: result.status };
 }
 
 export const getAiStatus = createServerFn({ method: "GET" }).handler(
   async (): Promise<AiStatus> => ({
     mistral: Boolean(mistralKey()),
+    gemini: Boolean(geminiKey()),
+    openai: Boolean(openaiKey()),
     locked: Boolean(
       (process.env.GENERATE_ACCESS_TOKEN ?? process.env.API_SECRET ?? "").trim(),
     ),
@@ -413,7 +500,7 @@ export const redeemGenerateAccess = createServerFn({ method: "POST" })
 export const generatePreview = createServerFn({ method: "POST" })
   .validator((input: { prompt: string; html?: string }) => ({
     prompt: String(input?.prompt ?? "").slice(0, 4000),
-    html: String(input?.html ?? "").slice(0, 32000), // Increased from 16000 to 32000
+    html: String(input?.html ?? "").slice(0, 32000),
   }))
   .handler(async ({ data }): Promise<GenerateResult> => {
     const { applyGateHttp, gateGenerate, GenerateGateError } = await import(

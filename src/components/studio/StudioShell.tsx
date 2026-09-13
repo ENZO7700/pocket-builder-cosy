@@ -24,8 +24,12 @@ type MobilePanel = "chat" | "code" | "preview";
 
 function providerLabel(status: AiStatus | null, used: string | null): string {
   if (used === "mistral") return "Mistral";
+  if (used === "gemini") return "Gemini";
+  if (used === "openai") return "OpenAI";
   if (used === "local") return "Local";
   if (status?.mistral) return "Mistral";
+  if (status?.gemini) return "Gemini";
+  if (status?.openai) return "OpenAI";
   return "Local";
 }
 

@@ -234,7 +234,7 @@ export const uploadWordPressMedia = createServerFn({ method: "POST" })
   .validator((input: { id: string; filename: string; mimeType: string; contentBase64: string }) => input)
   .handler(async ({ context, data }) => {
     await requireConfiguredAuth();
-    if (data.contentBase64.length > 10_000_000) throw new Error("Súbor je príliš veľký.");
+    if (data.contentBase64.length > 10_000_000) throw new Error("Komprimovaný súbor je príliš veľký (limit 7,5 MB).");
     const sql = await getDb();
     const row = await connectionFor(sql, context.userId, cleanText(data.id, 80));
     const url = await (await import("./wordpress-validation.server")).validateWordPressUrl(row.site_url);
@@ -320,4 +320,111 @@ export const exportToWordPress = createServerFn({ method: "POST" })
     const endpoint = data.contentId ? `${data.type}s/${Number(data.contentId)}` : `${data.type}s`;
     const item = await wpJson(row, endpoint, body);
     return mapContent(Array.isArray(item) ? item[0] : item, data.type);
+  });
+
+type SerializableValue = string | number | boolean | null | undefined | SerializableValue[] | { [key: string]: SerializableValue };
+export type JsonRecord = Record<string, SerializableValue>;
+
+async function wpApiJson<T extends JsonRecord | JsonRecord[] = JsonRecord>(row: Row, path: string, init?: RequestInit): Promise<T> {
+  const { validateWordPressUrl } = await import("./wordpress-validation.server");
+  const url = await validateWordPressUrl(row.site_url);
+  const normalizedPath = path.startsWith("wp-json/") ? path : `wp-json/${path.replace(/^\/+/, "")}`;
+  const response = await requestWordPress(new URL(`/${normalizedPath}`, url), row.username, await decrypt(row.encrypted_password!), init);
+  if (!response.ok) throw new Error(`WordPress odpovedal chybou (${response.status}).`);
+  return (await response.json()) as T;
+}
+
+export const listJetEngineCctItems = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: { id: string; cctSlug: string; page?: number; perPage?: number }) => ({
+    id: cleanText(input?.id, 80),
+    cctSlug: cleanText(input?.cctSlug, 80),
+    page: Math.max(1, Number(input?.page) || 1),
+    perPage: Math.min(100, Math.max(1, Number(input?.perPage) || 50)),
+  }))
+  .handler(async ({ context, data }): Promise<JsonRecord[]> => {
+    await requireConfiguredAuth();
+    const row = await connectionFor(await getDb(), context.userId, data.id);
+    const params = new URLSearchParams({ page: String(data.page), per_page: String(data.perPage) });
+    return wpApiJson<JsonRecord[]>(row, `jet-cct/${encodeURIComponent(data.cctSlug)}?${params.toString()}`);
+  });
+
+export const createJetEngineCctItem = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: { id: string; cctSlug: string; itemData: Record<string, unknown> }) => ({
+    id: cleanText(input?.id, 80),
+    cctSlug: cleanText(input?.cctSlug, 80),
+    itemData: input?.itemData ?? {},
+  }))
+  .handler(async ({ context, data }): Promise<JsonRecord> => {
+    await requireConfiguredAuth();
+    const row = await connectionFor(await getDb(), context.userId, data.id);
+    return wpApiJson<JsonRecord>(row, `jet-cct/${encodeURIComponent(data.cctSlug)}`, jsonBody(data.itemData));
+  });
+
+export const updateJetEngineCctItem = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: { id: string; cctSlug: string; itemId: number; itemData: Record<string, unknown> }) => ({
+    id: cleanText(input?.id, 80),
+    cctSlug: cleanText(input?.cctSlug, 80),
+    itemId: Number(input?.itemId),
+    itemData: input?.itemData ?? {},
+  }))
+  .handler(async ({ context, data }): Promise<JsonRecord> => {
+    await requireConfiguredAuth();
+    const row = await connectionFor(await getDb(), context.userId, data.id);
+    return wpApiJson<JsonRecord>(row, `jet-cct/${encodeURIComponent(data.cctSlug)}/${data.itemId}`, jsonBody(data.itemData));
+  });
+
+export const deleteJetEngineCctItem = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: { id: string; cctSlug: string; itemId: number }) => ({
+    id: cleanText(input?.id, 80),
+    cctSlug: cleanText(input?.cctSlug, 80),
+    itemId: Number(input?.itemId),
+  }))
+  .handler(async ({ context, data }): Promise<JsonRecord> => {
+    await requireConfiguredAuth();
+    const row = await connectionFor(await getDb(), context.userId, data.id);
+    return wpApiJson<JsonRecord>(row, `jet-cct/${encodeURIComponent(data.cctSlug)}/${data.itemId}`, { method: "DELETE" });
+  });
+
+export const syncGruppaTaxonomyToWordPress = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: {
+    id: string;
+    taxonomies: Array<{ name: string; slug: string }>;
+    terms: Array<{ name: string; slug: string; taxonomy: string }>;
+  }) => input)
+  .handler(async ({ context, data }): Promise<import("@/types/wordpress").GruppaSyncResult> => {
+    await requireConfiguredAuth();
+    const row = await connectionFor(await getDb(), context.userId, cleanText(data.id, 80));
+    let syncedTaxonomies = 0;
+    let syncedTerms = 0;
+    const errors: string[] = [];
+
+    for (const tax of data.taxonomies || []) {
+      try {
+        await wpApiJson(row, "jet-cct/taxonomy", jsonBody({ name: cleanText(tax.name, 120), slug: cleanText(tax.slug, 120), cct_status: "publish" }));
+        syncedTaxonomies += 1;
+      } catch (err: unknown) {
+        errors.push(`Taxonómia ${tax.name}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+
+    for (const term of data.terms || []) {
+      try {
+        await wpApiJson(row, "jet-cct/terms", jsonBody({ name: cleanText(term.name, 120), slug: cleanText(term.slug, 120), taxonomy: cleanText(term.taxonomy, 120), cct_status: "publish" }));
+        syncedTerms += 1;
+      } catch (err: unknown) {
+        errors.push(`Term ${term.name}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+
+    return {
+      ok: errors.length === 0,
+      syncedTaxonomies,
+      syncedTerms,
+      errors,
+    };
   });

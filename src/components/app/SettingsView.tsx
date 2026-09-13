@@ -19,6 +19,7 @@ import {
   type WordPressConnection,
 } from "@/lib/wordpress";
 import { useWorkspaceStore } from "@/stores/workspace-store";
+import { compressWordPressImage } from "@/lib/wordpress-media";
 
 export function SettingsView() {
   const { user } = useCurrentUserState();
@@ -251,7 +252,7 @@ export function SettingsView() {
                       <div className="mt-5">
                         <p className="text-xs uppercase tracking-widest text-subtle">Médiá</p>
                         <label className="mt-2 inline-flex cursor-pointer rounded-xl border border-border px-3 py-2 text-sm text-muted">Nahrať súbor
-                          <input type="file" className="sr-only" onChange={(e) => { const file = e.target.files?.[0]; if (!file) return; void file.arrayBuffer().then((buffer) => uploadWordPressMedia({ data: { id: wpSelected, filename: file.name, mimeType: file.type || "application/octet-stream", contentBase64: btoa(String.fromCharCode(...new Uint8Array(buffer))) } })).then(() => loadWordPressData(wpSelected)).catch((error) => setWpMsg(error instanceof Error ? error.message : "Nahrávanie zlyhalo.")); }} />
+                          <input type="file" accept="image/*" className="sr-only" onChange={(e) => { const file = e.target.files?.[0]; if (!file) return; void compressWordPressImage(file).then((compressed) => uploadWordPressMedia({ data: { id: wpSelected, filename: compressed.filename, mimeType: compressed.mimeType, contentBase64: compressed.contentBase64 } })).then(() => loadWordPressData(wpSelected)).catch((error) => setWpMsg(error instanceof Error ? error.message : "Nahrávanie zlyhalo.")); }} />
                         </label>
                         <div className="mt-2 flex flex-wrap gap-2">{wpMedia.map((media) => <a key={media.id} href={media.link ?? "#"} target="_blank" rel="noreferrer" className="rounded-lg border border-border px-2 py-1 text-xs text-muted">{media.title || `Médium #${media.id}`}</a>)}</div>
                       </div>

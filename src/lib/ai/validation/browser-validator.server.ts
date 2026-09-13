@@ -51,6 +51,33 @@ export class BrowserValidator implements Validator {
       };
     }
 
+    // Static pre-filter: Fast reject on obviously incomplete HTML before waking up Chromium
+    const hasBasicDoctype = html.includes('<!DOCTYPE html>') || html.includes('<!doctype html>');
+    const hasBasicHtml = html.toLowerCase().includes('<html');
+    if (!hasBasicDoctype || !hasBasicHtml) {
+      if (!hasBasicDoctype) {
+        errors.push({
+          type: 'structure',
+          message: 'Missing <!DOCTYPE html> declaration',
+          severity: 'critical'
+        });
+      }
+      if (!hasBasicHtml) {
+        errors.push({
+          type: 'structure',
+          message: 'Missing <html> tag',
+          severity: 'critical'
+        });
+      }
+      return {
+        ok: false,
+        errors,
+        warnings,
+        strategy: 'browser',
+        durationMs: Date.now() - startTime
+      };
+    }
+
     // Ensure pool is initialized
     const pool = getBrowserPool(this.poolSize, this.timeoutMs);
     if (!this.poolInitialized) {

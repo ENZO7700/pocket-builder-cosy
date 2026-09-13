@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   Check,
   Code2,
@@ -17,6 +17,33 @@ import { useStudioStore } from "@/stores/studio-store";
 import { useWorkspaceStore, type BlueprintItem } from "@/stores/workspace-store";
 
 type SortMode = "all" | "recent" | "az";
+
+const SMART_API_POWERUPS = [
+  {
+    id: "weather",
+    title: "Počasie",
+    detail: "OpenWeatherMap blok s bezpečným loading a error stavom.",
+    icon: "☁",
+    prompt:
+      "Pridaj do aplikácie kartu Aktuálne počasie pre mesto Praha. Použi OpenWeatherMap fetch s placeholderom pre VITE_OPENWEATHERMAP_KEY, bezpečne ošetri loading, chyby a chýbajúci kľúč, bez externých knižníc. Zachovaj existujúci dizajn.",
+  },
+  {
+    id: "currency",
+    title: "Kurzy mien",
+    detail: "ExchangeRate-API widget s cache a fallback stavom.",
+    icon: "↔",
+    prompt:
+      "Pridaj prevodník EUR/CZK s ExchangeRate-API. Použi fetch na https://open.er-api.com/v6/latest/EUR, zobraz loading a zrozumiteľnú chybu, validuj číselný vstup a pri výpadku ponechaj posledný výsledok. Zachovaj existujúci dizajn.",
+  },
+  {
+    id: "qr",
+    title: "QR kód",
+    detail: "Samostatný QR blok pripravený na URL alebo text.",
+    icon: "▦",
+    prompt:
+      "Pridaj do aplikácie QR kód pre zadaný text alebo URL. Vygeneruj ho bez externých CDN pomocou inline SVG/canvas algoritmu alebo bezpečného textového fallbacku, pridaj kopírovanie vstupu a zachovaj existujúci dizajn.",
+  },
+] as const;
 
 function safeFileName(title: string) {
   const normalized = title
@@ -41,6 +68,7 @@ function downloadHtml(blueprint: BlueprintItem) {
 }
 
 export function BlueprintsView() {
+  const navigate = useNavigate();
   const html = useStudioStore((s) => s.html);
   const title = useStudioStore((s) => s.title);
   const applyResult = useStudioStore((s) => s.applyResult);
@@ -101,6 +129,11 @@ export function BlueprintsView() {
       removeBlueprint(blueprint.id);
       showNotice("Blueprint zmazaný");
     }
+  }
+
+  function applyPowerUp(prompt: string) {
+    useStudioStore.getState().setBrief(prompt);
+    void navigate({ to: "/studio" });
   }
 
   return (
@@ -167,6 +200,36 @@ export function BlueprintsView() {
             </Button>
           </div>
         </div>
+
+        <section className="mt-5 rounded-3xl border border-accent/20 bg-accent/5 p-5 sm:p-7">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-accent">Smart API Power-Ups</p>
+              <h2 className="mt-2 font-serif text-2xl tracking-tight">Pripravené integračné bloky</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
+                Jedným kliknutím vložíš otestovaný brief s bezpečnými loading a error stavmi do Projekty.
+              </p>
+            </div>
+            <span className="text-xs text-subtle">1 klik → upraviť → Generate</span>
+          </div>
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            {SMART_API_POWERUPS.map((powerUp) => (
+              <button
+                key={powerUp.id}
+                type="button"
+                onClick={() => applyPowerUp(powerUp.prompt)}
+                className="group rounded-2xl border border-border bg-surface p-4 text-left transition hover:-translate-y-0.5 hover:border-accent/60 hover:shadow-lg hover:shadow-black/10 focus:outline-none focus:ring-2 focus:ring-accent/40"
+              >
+                <span className="flex size-9 items-center justify-center rounded-xl bg-accent/15 text-lg text-accent" aria-hidden="true">
+                  {powerUp.icon}
+                </span>
+                <strong className="mt-3 block text-sm">{powerUp.title}</strong>
+                <span className="mt-1 block text-xs leading-relaxed text-muted">{powerUp.detail}</span>
+                <span className="mt-3 block text-xs font-medium text-accent group-hover:underline">Použiť power-up →</span>
+              </button>
+            ))}
+          </div>
+        </section>
 
         {!html ? (
           <div className="mt-5 flex items-center gap-3 rounded-2xl border border-accent/30 bg-accent/10 p-4 text-sm text-muted">

@@ -70,3 +70,11 @@ export interface GruppaTaxonomyQuery {
   order: "ASC";
   status: "publish";
 }
+
+export interface GruppaSyncResult {
+  ok: boolean;
+  syncedTaxonomies: number;
+  syncedTerms: number;
+  errors: string[];
+}
+

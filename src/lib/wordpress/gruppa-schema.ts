@@ -319,3 +319,20 @@ export function groupTermsByTaxonomy(
 
   return map;
 }
+
+export const GRUPPA_DEFAULT_TAXONOMIES = [
+  { name: "Kategórie", slug: "kategorie" },
+  { name: "Lokality", slug: "lokality" },
+  { name: "Typy", slug: "typy" },
+  { name: "Značky", slug: "znacky" },
+];
+
+export const GRUPPA_DEFAULT_TERMS = [
+  { name: "Praha 1 - Staré Město", slug: "praha-1-stare-mesto", taxonomy: "Lokality" },
+  { name: "Praha 2 - Vinohrady", slug: "praha-2-vinohrady", taxonomy: "Lokality" },
+  { name: "Apartmány", slug: "apartmany", taxonomy: "Typy" },
+  { name: "Hotely", slug: "hotely", taxonomy: "Typy" },
+  { name: "Wellness & Spa", slug: "wellness-spa", taxonomy: "Kategórie" },
+  { name: "Last Minute", slug: "last-minute", taxonomy: "Kategórie" },
+];
+

@@ -13,11 +13,14 @@ import {
   listWordPressConnections,
   listWordPressContent,
   listWordPressMedia,
+  syncGruppaTaxonomyToWordPress,
   uploadWordPressMedia,
   type WordPressConnection,
   type WordPressContent,
 } from "@/lib/wordpress";
 import { useStudioStore } from "@/stores/studio-store";
+import { compressWordPressImage } from "@/lib/wordpress-media";
+import { GRUPPA_DEFAULT_TAXONOMIES, GRUPPA_DEFAULT_TERMS } from "@/lib/wordpress/gruppa-schema";
 
 type Tab = "posts" | "pages" | "media" | "gruppa";
 
@@ -131,25 +134,45 @@ export function WordPressView() {
   }
 
   async function uploadMedia(file: File) {
-      if (!connectionId || !file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) {
-        setMessage("Povolené sú iba obrázky do 5 MB.");
+      if (!connectionId || !file.type.startsWith("image/") || file.size > 15 * 1024 * 1024) {
+        setMessage("Povolené sú iba obrázky do 15 MB pred kompresiou.");
         return;
       }
       setBusy(true);
       try {
-        const contentBase64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
-          reader.onerror = () => reject(new Error("Súbor sa nepodarilo načítať."));
-          reader.readAsDataURL(file);
-        });
-        await uploadWordPressMedia({ data: { id: connectionId, filename: file.name, mimeType: file.type, contentBase64 } });
-        setMessage("Médium nahrané");
+        const compressed = await compressWordPressImage(file);
+        await uploadWordPressMedia({ data: { id: connectionId, filename: compressed.filename, mimeType: compressed.mimeType, contentBase64: compressed.contentBase64 } });
+        const savedPercent = Math.max(0, Math.round((1 - compressed.compressedBytes / compressed.originalBytes) * 100));
+        setMessage(`Médium nahrané ako WebP${savedPercent > 0 ? ` (ušetrených ${savedPercent} %)` : ""}`);
         await refresh(connectionId, "media");
       } catch (error) {
         setMessage(error instanceof Error ? error.message : "Nahrávanie zlyhalo.");
       } finally {
         setBusy(false);
+      }
+    }
+
+  async function handleSyncGruppa() {
+    if (!connectionId) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      const result = await syncGruppaTaxonomyToWordPress({
+        data: {
+          id: connectionId,
+          taxonomies: GRUPPA_DEFAULT_TAXONOMIES,
+          terms: GRUPPA_DEFAULT_TERMS,
+        },
+      });
+      if (result.ok) {
+        setMessage(`Úspešne synchronizovaných ${result.syncedTaxonomies} taxonómií a ${result.syncedTerms} termov priamo do JetEngine CCT.`);
+      } else {
+        setMessage(`Synchronizácia dokončená s chybami: ${result.errors.join("; ")}`);
+      }
+    } catch (err: unknown) {
+      setMessage(err instanceof Error ? err.message : "Synchronizácia JetEngine CCT zlyhala.");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -177,7 +200,16 @@ export function WordPressView() {
           ))}
         </div>
         {tab === "gruppa" ? (
-          <div className="mt-5">
+          <div className="mt-5 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-card/60 p-4">
+              <div>
+                <h4 className="font-semibold text-fg">JetEngine CCT 1-Click Synchronizácia</h4>
+                <p className="text-xs text-muted">Priamy zápis B05 Taxonomy a B06 Terms schém cez WordPress REST API.</p>
+              </div>
+              <Button type="button" disabled={busy || !connectionId} onClick={() => void handleSyncGruppa()}>
+                <RefreshCw className={`size-4 ${busy ? "animate-spin" : ""}`} /> 1-Click Sync do WordPressu
+              </Button>
+            </div>
             <GruppaArchitectureDiagram />
           </div>
         ) : tab === "media" ? (
