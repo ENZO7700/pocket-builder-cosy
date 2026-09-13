@@ -12,7 +12,11 @@ const SERVER_FILE_RE = /\.server(?:\.(?:t|j)sx?)?$/;
 const SERVER_PATH_HINTS = [
   "/src/lib/db.ts",
   "/src/lib/db/",
+  "/src/lib/db",
+  "@/lib/db",
   "/src/lib/auth/server.ts",
+  "/src/lib/auth/server",
+  "@/lib/auth/server",
   "/src/lib/auth/pglite-dialect",
   "/src/lib/app-data/server-only",
   "/src/lib/app-data/client.server",
