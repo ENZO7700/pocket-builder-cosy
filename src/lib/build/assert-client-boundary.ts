@@ -183,7 +183,9 @@ export function isDualServerFnImporter(importer: string | undefined): boolean {
   const n = importer.replace(/\\/g, "/");
   return (
     n.includes("/src/lib/ai/generate.ts") ||
-    n.includes("/src/lib/auth/middleware.ts")
+    n.includes("/src/lib/auth/middleware.ts") ||
+    n.includes("/src/lib/wordpress.ts") ||
+    n.includes("/src/routes/api/auth/$.ts")
   );
 }
 
