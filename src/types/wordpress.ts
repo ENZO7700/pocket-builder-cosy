@@ -77,4 +77,3 @@ export interface GruppaSyncResult {
   syncedTerms: number;
   errors: string[];
 }
-

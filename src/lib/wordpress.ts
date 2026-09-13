@@ -1,5 +1,5 @@
-import { createServerFn } from "@tanstack/react-start";
 import { authMiddleware } from "@/lib/auth/middleware";
+import { createServerFn } from "@tanstack/react-start";
 
 type SqlClient = Awaited<ReturnType<typeof import("@/lib/db").getSql>>;
 

@@ -12,7 +12,7 @@ services:
       - NODE_ENV=production
       - PORT=8080
       - HOST=0.0.0.0
-      
+
       # Self-Repair Loop
       - SELF_REPAIR_ENABLED=true
       - MAX_REPAIR_RETRIES=2
@@ -20,7 +20,7 @@ services:
       - VALIDATION_STRATEGY=auto
       - BROWSER_POOL_SIZE=2
       - VALIDATION_MAX_HTML_SIZE=500000
-      
+
       # AI Providers
       - MISTRAL_API_KEY=${MISTRAL_API_KEY}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
@@ -32,7 +32,7 @@ services:
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
       - WORDPRESS_ENCRYPTION_KEY=${WORDPRESS_ENCRYPTION_KEY}
       - PGLITE_DATA_DIR=${PGLITE_DATA_DIR:-/app/data/pglite}
-      
+
       # Optional: Redis for rate limiting
       - REDIS_URL=redis://redis:6379
     mem_limit: 1536m

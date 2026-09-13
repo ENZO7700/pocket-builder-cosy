@@ -203,7 +203,7 @@ export const GRUPPA_SITEDATA_SCHEMA = {
  */
 export function sortGruppaItemsById<T extends { _ID?: number }>(
   items: T[],
-  direction: "ASC" | "DESC" = "ASC"
+  direction: "ASC" | "DESC" = "ASC",
 ): T[] {
   return [...items].sort((a, b) => {
     const idA = a._ID ?? 0;
@@ -211,8 +211,6 @@ export function sortGruppaItemsById<T extends { _ID?: number }>(
     return direction === "ASC" ? idA - idB : idB - idA;
   });
 }
-
-
 
 /**
  * Sanitizes and normalizes a string into a clean web slug (strips Slovak diacritics, special chars).
@@ -304,9 +302,7 @@ export function validateTermPayload(data: Partial<GruppaTermCct>): {
 /**
  * Groups an array of term items by their parent taxonomy name.
  */
-export function groupTermsByTaxonomy(
-  terms: GruppaTermCct[]
-): Record<string, GruppaTermCct[]> {
+export function groupTermsByTaxonomy(terms: GruppaTermCct[]): Record<string, GruppaTermCct[]> {
   const map: Record<string, GruppaTermCct[]> = {};
 
   for (const term of terms) {
@@ -335,4 +331,3 @@ export const GRUPPA_DEFAULT_TERMS = [
   { name: "Wellness & Spa", slug: "wellness-spa", taxonomy: "Kategórie" },
   { name: "Last Minute", slug: "last-minute", taxonomy: "Kategórie" },
 ];
-

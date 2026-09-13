@@ -1,11 +1,8 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
-import { Link } from "@tanstack/react-router";
-import { Database, FileText, Globe, Image, Plus, RefreshCw, Trash2, Upload } from "lucide-react";
+import { GruppaArchitectureDiagram } from "@/components/cms/GruppaArchitectureDiagram";
 import { Button } from "@/components/ui/button";
 import { authEnabled } from "@/lib/auth/client";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { GruppaArchitectureDiagram } from "@/components/cms/GruppaArchitectureDiagram";
 import {
   createWordPressContent,
   deleteWordPressContent,
@@ -18,9 +15,12 @@ import {
   type WordPressConnection,
   type WordPressContent,
 } from "@/lib/wordpress";
-import { useStudioStore } from "@/stores/studio-store";
 import { compressWordPressImage } from "@/lib/wordpress-media";
 import { GRUPPA_DEFAULT_TAXONOMIES, GRUPPA_DEFAULT_TERMS } from "@/lib/wordpress/gruppa-schema";
+import { useStudioStore } from "@/stores/studio-store";
+import { Link } from "@tanstack/react-router";
+import { Database, FileText, Globe, Image, Plus, RefreshCw, Trash2, Upload } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 
 type Tab = "posts" | "pages" | "media" | "gruppa";
 

@@ -13,8 +13,8 @@
 //   BROWSER_POOL_SIZE=2         - Browser pool size (default: 2)
 
 import type { Validator, ValidationResult, ValidationConfig } from './types.server';
-import { getBrowserValidator, BrowserValidator } from './browser-validator.server';
-import { getStaticValidator, StaticValidator } from './static-validator.server';
+import { getBrowserValidator } from './browser-validator.server';
+import { getStaticValidator } from './static-validator.server';
 
 // Configuration from environment
 const getConfig = (): ValidationConfig => {
@@ -60,7 +60,7 @@ export const getValidator = (): Validator => {
     strategyUsed = 'none';
     // Return no-op validator that always passes
     selectedValidator = {
-      validate: async (html: string) => ({
+      validate: async (_html: string) => ({
         ok: true,
         errors: [],
         warnings: [],

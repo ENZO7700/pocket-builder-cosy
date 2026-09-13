@@ -1,6 +1,6 @@
-import { createServerFn } from "@tanstack/react-start";
 import { abortKind } from "@/lib/ai/abort-signal";
 import { injectCozyElements } from "@/lib/preview/cozy-elements";
+import { createServerFn } from "@tanstack/react-start";
 
 
 export type AiProvider = "mistral" | "gemini" | "openai";
@@ -359,30 +359,30 @@ async function generateWithRepair(
     prompt: generationPrompt,
     signal: activeSignal,
   });
-  
+
   if (result.ok) {
     // Validate if self-repair is enabled
     if (SELF_REPAIR_ENABLED) {
       const { validateHtml } = await import("./validation/index.server");
       const validation = await validateHtml(result.text);
-      
+
       if (validation.ok) {
         // Success - pack and return
         return pack(result.text, result.provider, result.model);
       }
-      
+
       // Validation failed - check if we should retry
       if (retryCount >= MAX_REPAIR_RETRIES) {
         // Max retries reached, return best attempt with warnings
         console.warn(`Self-repair: Max retries (${MAX_REPAIR_RETRIES}) reached. Errors:`, validation.errors);
         return pack(result.text, result.provider, result.model);
       }
-      
+
       // Build repair prompt
       const errorMessages = validation.errors
         .map((e, i) => `${i + 1}. [${e.type.toUpperCase()}] ${e.message}`)
         .join('\n');
-      
+
       const repairPrompt = `Fix the following critical issues in your previous output:
 
 ERRORS FOUND:
@@ -398,7 +398,7 @@ INSTRUCTIONS:
 
 Previous HTML:
 ${result.text}`;
-      
+
       // Retry with repair using REVISE_SYSTEM
       console.log(`Self-repair: Attempting fix for ${validation.errors.length} errors (attempt ${retryCount + 1}/${MAX_REPAIR_RETRIES})`);
       return generateWithRepair(
@@ -412,11 +412,11 @@ ${result.text}`;
       return pack(result.text, result.provider, result.model);
     }
   }
-  
+
   if (result.aborted) {
     return { ok: false, error: "Cancelled", status: 499, aborted: true };
   }
-  
+
   return { ok: false, error: result.error, status: result.status };
 }
 
@@ -451,13 +451,13 @@ export const validationHealth = createServerFn({ method: "GET" }).handler(
     try {
       // Dynamic import to avoid client-side bundling
       const { validationHealthCheck, getValidationStrategy, getValidationConfig } = await import("@/lib/ai/validation/index.server");
-      
+
       const healthResult = await validationHealthCheck();
       const strategy = getValidationStrategy();
       const config = getValidationConfig();
 
       const details = healthResult.details as Record<string, unknown> | undefined;
-      
+
       return {
         ok: healthResult.ok,
         strategy,
