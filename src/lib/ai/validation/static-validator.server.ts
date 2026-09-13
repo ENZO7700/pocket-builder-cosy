@@ -74,11 +74,11 @@ export class StaticValidator implements Validator {
     // Horizontal overflow patterns
     const overflowPatterns = [
       // Fixed width > viewport
-      /width:\s*(\d{4,}|\d{3,}[\.\d]+)(px|rem|em)/i,
+      /width:\s*(\d{4,}|\d{3,}[.\d]+)(px|rem|em)/i,
       // No max-width on wide elements
       /<div[^>]*style=["'][^"']*width:\s*\d+(px|rem|em)[^"']*["'][^>]*>/i,
       // Large absolute positioning
-      /left:\s*(\d{4,}|\d{3,}[\.\d]+)(px|rem|em)/i,
+      /left:\s*(\d{4,}|\d{3,}[.\d]+)(px|rem|em)/i,
     ];
 
     overflowPatterns.forEach((pattern, index) => {

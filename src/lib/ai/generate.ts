@@ -1,16 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { abortKind } from "@/lib/ai/abort-signal";
 import { injectCozyElements } from "@/lib/preview/cozy-elements";
-// Inline ValidationError type to avoid server-only import
-// Original: import type { ValidationError } from "@/lib/ai/validation/types.server";
-interface ValidationError {
-  type: 'console' | 'overflow' | 'syntax' | 'structure' | 'network' | 'timeout';
-  message: string;
-  severity: 'critical' | 'warning';
-  details?: Record<string, unknown>;
-}
-// Dynamic import to avoid client-side bundling of server-only modules
-// import { validationHealthCheck, getValidationStrategy, getValidationConfig } from "@/lib/ai/validation/index.server";
+
 
 export type AiProvider = "mistral";
 
@@ -274,9 +265,7 @@ async function generateWithRepair(
   }
 
   // Generate with Mistral
-  let result: { ok: true; text: string } | { ok: false; error: string; aborted?: boolean };
-  
-  result = await complete({
+  const result: { ok: true; text: string } | { ok: false; error: string; aborted?: boolean } = await complete({
     url: "https://api.mistral.ai/v1/chat/completions",
     key: mistral,
     model: "mistral-large-latest",

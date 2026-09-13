@@ -84,3 +84,9 @@ attachments/
 
 # Bundle analysis
 bundle-budget.json
+
+# Local CMS and VPS migration artifacts
+cms/
+deploy/vps-wordpress/
+scripts/reset-wp-pass.mjs
+src/stores/todoooo.md

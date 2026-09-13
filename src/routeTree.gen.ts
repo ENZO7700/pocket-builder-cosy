@@ -12,12 +12,15 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BlueprintsRouteImport } from './routes/blueprints'
 import { Route as LaunchRouteImport } from './routes/launch'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as PromptsRouteImport } from './routes/prompts'
+import { Route as RegisterRouteImport } from './routes/register'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as StudioRouteImport } from './routes/studio'
 import { Route as WordpressRouteImport } from './routes/wordpress'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiValidationHealthRouteImport } from './routes/api/validationHealth'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -34,9 +37,19 @@ const LaunchRoute = LaunchRouteImport.update({
   path: '/launch',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PromptsRoute = PromptsRouteImport.update({
   id: '/prompts',
   path: '/prompts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -64,40 +77,54 @@ const ApiValidationHealthRoute = ApiValidationHealthRouteImport.update({
   path: '/api/validationHealth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/blueprints': typeof BlueprintsRoute
   '/launch': typeof LaunchRoute
+  '/login': typeof LoginRoute
   '/prompts': typeof PromptsRoute
+  '/register': typeof RegisterRoute
   '/settings': typeof SettingsRoute
   '/studio': typeof StudioRoute
   '/wordpress': typeof WordpressRoute
   '/api/health': typeof ApiHealthRoute
   '/api/validationHealth': typeof ApiValidationHealthRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/blueprints': typeof BlueprintsRoute
   '/launch': typeof LaunchRoute
+  '/login': typeof LoginRoute
   '/prompts': typeof PromptsRoute
+  '/register': typeof RegisterRoute
   '/settings': typeof SettingsRoute
   '/studio': typeof StudioRoute
   '/wordpress': typeof WordpressRoute
   '/api/health': typeof ApiHealthRoute
   '/api/validationHealth': typeof ApiValidationHealthRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/blueprints': typeof BlueprintsRoute
   '/launch': typeof LaunchRoute
+  '/login': typeof LoginRoute
   '/prompts': typeof PromptsRoute
+  '/register': typeof RegisterRoute
   '/settings': typeof SettingsRoute
   '/studio': typeof StudioRoute
   '/wordpress': typeof WordpressRoute
   '/api/health': typeof ApiHealthRoute
   '/api/validationHealth': typeof ApiValidationHealthRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -105,46 +132,58 @@ export interface FileRouteTypes {
     | '/'
     | '/blueprints'
     | '/launch'
+    | '/login'
     | '/prompts'
+    | '/register'
     | '/settings'
     | '/studio'
     | '/wordpress'
     | '/api/health'
     | '/api/validationHealth'
+    | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/blueprints'
     | '/launch'
+    | '/login'
     | '/prompts'
+    | '/register'
     | '/settings'
     | '/studio'
     | '/wordpress'
     | '/api/health'
     | '/api/validationHealth'
+    | '/api/auth/$'
   id:
     | '__root__'
     | '/'
     | '/blueprints'
     | '/launch'
+    | '/login'
     | '/prompts'
+    | '/register'
     | '/settings'
     | '/studio'
     | '/wordpress'
     | '/api/health'
     | '/api/validationHealth'
+    | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BlueprintsRoute: typeof BlueprintsRoute
   LaunchRoute: typeof LaunchRoute
+  LoginRoute: typeof LoginRoute
   PromptsRoute: typeof PromptsRoute
+  RegisterRoute: typeof RegisterRoute
   SettingsRoute: typeof SettingsRoute
   StudioRoute: typeof StudioRoute
   WordpressRoute: typeof WordpressRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiValidationHealthRoute: typeof ApiValidationHealthRoute
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -170,11 +209,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LaunchRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/prompts': {
       id: '/prompts'
       path: '/prompts'
       fullPath: '/prompts'
       preLoaderRoute: typeof PromptsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -212,6 +265,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiValidationHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -219,12 +279,15 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BlueprintsRoute: BlueprintsRoute,
   LaunchRoute: LaunchRoute,
+  LoginRoute: LoginRoute,
   PromptsRoute: PromptsRoute,
+  RegisterRoute: RegisterRoute,
   SettingsRoute: SettingsRoute,
   StudioRoute: StudioRoute,
   WordpressRoute: WordpressRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiValidationHealthRoute: ApiValidationHealthRoute,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

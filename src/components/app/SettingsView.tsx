@@ -1,7 +1,9 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { getAiStatus, redeemGenerateAccess } from "@/lib/ai/generate";
 import { authEnabled } from "@/lib/auth/client";
+import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import {
   createWordPressConnection,
   deleteWordPressConnection,
@@ -19,6 +21,7 @@ import {
 import { useWorkspaceStore } from "@/stores/workspace-store";
 
 export function SettingsView() {
+  const { user } = useCurrentUserState();
   const workspaceId = useWorkspaceStore((s) => s.workspaceId);
   const clearLocal = useWorkspaceStore((s) => s.clearLocal);
   const [copied, setCopied] = useState(false);
@@ -39,10 +42,10 @@ export function SettingsView() {
 
   useEffect(() => {
     void getAiStatus().then((s) => setLocked(s.locked));
-    if (authEnabled) {
+    if (authEnabled && user?.id) {
       void listWordPressConnections().then(setWpSites).catch(() => setWpMsg("Pre správu pripojení sa prihláste."));
     }
-  }, []);
+  }, [user?.id]);
 
   async function copyId() {
     try {
@@ -171,7 +174,12 @@ export function SettingsView() {
           <dt className="text-xs uppercase tracking-widest text-subtle">WordPress</dt>
           {!authEnabled ? (
             <dd className="mt-2 text-sm leading-relaxed text-muted">
-              Pripojenia WordPressu vyžadujú skutočné prihlásenie. Zapnite autentifikáciu v konfigurácii aplikácie — nikdy nepoužívame zdieľaného vývojového používateľa.
+              Pre pripojenie WordPressu sa najprv prihlás. Zapnite autentifikáciu v konfigurácii aplikácie — nikdy nepoužívame zdieľaného vývojového používateľa.
+            </dd>
+          ) : !user ? (
+            <dd className="mt-2 text-sm leading-relaxed text-muted">
+              Pre pripojenie WordPressu sa najprv prihlás.{" "}
+              <Link className="text-accent underline-offset-4 hover:underline" to="/login">Prihlásiť sa</Link>
             </dd>
           ) : (
             <>

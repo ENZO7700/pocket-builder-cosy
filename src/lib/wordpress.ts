@@ -39,6 +39,10 @@ export type WordPressContent = {
   link: string | null;
   date: string | null;
   modified: string | null;
+  slug: string;
+  author: number | null;
+  comments: number;
+  featuredMedia: number | null;
 };
 
 type WpItem = {
@@ -50,6 +54,11 @@ type WpItem = {
   title?: { rendered?: string };
   content?: { rendered?: string };
   excerpt?: { rendered?: string };
+  slug?: string;
+  author?: number;
+  comment_status?: string;
+  comment_count?: number;
+  featured_media?: number;
 };
 
 function cleanText(value: unknown, max: number): string {
@@ -126,7 +135,9 @@ function mapContent(item: WpItem, type: "post" | "page"): WordPressContent {
   return {
     id: item.id ?? 0, type, title: item.title?.rendered ?? "", content: item.content?.rendered ?? "",
     excerpt: item.excerpt?.rendered ?? "", status: item.status ?? "unknown", link: item.link ?? null,
-    date: item.date ?? null, modified: item.modified ?? null,
+    date: item.date ?? null, modified: item.modified ?? null, slug: item.slug ?? "",
+    author: item.author ?? null, comments: item.comment_count ?? 0,
+    featuredMedia: item.featured_media ?? null,
   };
 }
 
@@ -238,14 +249,21 @@ export const uploadWordPressMedia = createServerFn({ method: "POST" })
 
 export const listWordPressContent = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator((input: { id: string; type?: "post" | "page" }) => ({ id: cleanText(input?.id, 80), type: input?.type }))
+  .validator((input: { id: string; type?: "post" | "page"; status?: string; search?: string; page?: number; perPage?: number }) => ({
+    id: cleanText(input?.id, 80), type: input?.type, status: cleanText(input?.status, 20),
+    search: cleanText(input?.search, 120), page: Math.max(1, Number(input?.page) || 1),
+    perPage: Math.min(50, Math.max(1, Number(input?.perPage) || 20)),
+  }))
   .handler(async ({ context, data }): Promise<WordPressContent[]> => {
     await requireConfiguredAuth();
     const sql = await getDb();
     const row = await connectionFor(sql, context.userId, data.id);
     const types: Array<"post" | "page"> = data.type ? [data.type] : ["post", "page"];
     const results = await Promise.all(types.map(async (type) => {
-      const items = await wpJson(row, `${type}s?per_page=50&context=edit`);
+      const params = new URLSearchParams({ per_page: String(data.perPage), page: String(data.page), context: "edit" });
+      if (data.status && data.status !== "all") params.set("status", data.status);
+      if (data.search) params.set("search", data.search);
+      const items = await wpJson(row, `${type}s?${params.toString()}`);
       return (Array.isArray(items) ? items : []).map((item) => mapContent(item, type));
     }));
     return results.flat().sort((a, b) => (b.modified ?? "").localeCompare(a.modified ?? ""));
@@ -263,21 +281,21 @@ export const getWordPressContent = createServerFn({ method: "POST" })
 
 export const createWordPressContent = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator((input: { id: string; type: "post" | "page"; title: string; content: string; status?: string }) => input)
+  .validator((input: { id: string; type: "post" | "page"; title: string; content: string; excerpt?: string; slug?: string; status?: string; featuredMedia?: number | null }) => input)
   .handler(async ({ context, data }): Promise<WordPressContent> => {
     await requireConfiguredAuth();
     const row = await connectionFor(await getDb(), context.userId, cleanText(data.id, 80));
-    const item = await wpJson(row, `${data.type}s`, jsonBody({ title: cleanText(data.title, 300), content: String(data.content ?? "").slice(0, 200000), status: data.status === "publish" ? "publish" : "draft" }));
+    const item = await wpJson(row, `${data.type}s`, jsonBody({ title: cleanText(data.title, 300), slug: cleanText(data.slug, 200), excerpt: String(data.excerpt ?? "").slice(0, 5000), content: String(data.content ?? "").slice(0, 200000), status: ["publish", "draft", "pending", "private"].includes(data.status ?? "") ? data.status : "draft", featured_media: data.featuredMedia ?? 0 }));
     return mapContent(Array.isArray(item) ? item[0] : item, data.type);
   });
 
 export const updateWordPressContent = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator((input: { id: string; type: "post" | "page"; contentId: number; title: string; content: string; status?: string }) => input)
+  .validator((input: { id: string; type: "post" | "page"; contentId: number; title: string; content: string; excerpt?: string; slug?: string; status?: string; featuredMedia?: number | null }) => input)
   .handler(async ({ context, data }): Promise<WordPressContent> => {
     await requireConfiguredAuth();
     const row = await connectionFor(await getDb(), context.userId, cleanText(data.id, 80));
-    const item = await wpJson(row, `${data.type}s/${Number(data.contentId)}`, jsonBody({ title: cleanText(data.title, 300), content: String(data.content ?? "").slice(0, 200000), status: data.status === "publish" ? "publish" : "draft" }));
+    const item = await wpJson(row, `${data.type}s/${Number(data.contentId)}`, jsonBody({ title: cleanText(data.title, 300), slug: cleanText(data.slug, 200), excerpt: String(data.excerpt ?? "").slice(0, 5000), content: String(data.content ?? "").slice(0, 200000), status: ["publish", "draft", "pending", "private"].includes(data.status ?? "") ? data.status : "draft", featured_media: data.featuredMedia ?? 0 }));
     return mapContent(Array.isArray(item) ? item[0] : item, data.type);
   });
 
