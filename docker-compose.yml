@@ -23,6 +23,12 @@ services:
       
       # AI Provider (required)
       - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+
+      # Authentication & WordPress Connector
+      - VITE_AUTH_ENABLED=${VITE_AUTH_ENABLED:-true}
+      - BETTER_AUTH_URL=${BETTER_AUTH_URL:-https://cozy.h4ck3d.me}
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+      - WORDPRESS_ENCRYPTION_KEY=${WORDPRESS_ENCRYPTION_KEY}
       
       # Optional: Redis for rate limiting
       - REDIS_URL=redis://redis:6379
