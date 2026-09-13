@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   FileText,
+  Globe,
   FolderOpen,
   LayoutDashboard,
   Menu,
@@ -17,6 +18,7 @@ const NAV = [
   { to: "/studio", label: "Projekty", icon: FolderOpen },
   { to: "/prompts", label: "Promty", icon: FileText },
   { to: "/blueprints", label: "Blueprinty", icon: ScrollText },
+  { to: "/wordpress", label: "WordPress", icon: Globe },
   { to: "/launch", label: "Launch", icon: Rocket },
   { to: "/settings", label: "Nastavenie", icon: Settings },
 ] as const;

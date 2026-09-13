@@ -58,6 +58,7 @@ const FORBIDDEN_BUILTINS = new Set([
 const DUAL_FNS = new Set([
   join(SRC, "lib/ai/generate.ts"),
   join(SRC, "lib/auth/middleware.ts"),
+  join(SRC, "lib/wordpress.ts"),
 ]);
 const LEAK_RE =
   /createRequire|node:module|from["']module["']|from["']pg["']|@electric-sql\/pglite/;

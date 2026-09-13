@@ -1,6 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { authMiddleware } from "@/lib/auth/middleware";
-import { getSql } from "@/lib/db";
+
+type SqlClient = Awaited<ReturnType<typeof import("@/lib/db").getSql>>;
+
+async function getDb(): Promise<SqlClient> {
+  const { getSql } = await import("@/lib/db");
+  return getSql();
+}
 
 export type WordPressConnection = {
   id: string;
@@ -50,33 +56,20 @@ function cleanText(value: unknown, max: number): string {
   return String(value ?? "").trim().slice(0, max);
 }
 
-async function cryptoKey(): Promise<Buffer> {
-  const { createHash } = await import("node:crypto");
-  const secret = process.env.WORDPRESS_ENCRYPTION_KEY?.trim();
-  if (!secret) throw new Error("WORDPRESS_ENCRYPTION_KEY nie je nakonfigurovaný.");
-  return createHash("sha256").update(secret).digest();
-}
-
 async function encrypt(value: string): Promise<string> {
-  const { createCipheriv, randomBytes } = await import("node:crypto");
-  const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", await cryptoKey(), iv);
-  const ciphertext = Buffer.concat([cipher.update(value, "utf8"), cipher.final()]);
-  return [iv.toString("base64url"), cipher.getAuthTag().toString("base64url"), ciphertext.toString("base64url")].join(".");
+  const { encryptWordPressPassword } = await import("./wordpress-crypto.server");
+  return encryptWordPressPassword(value);
 }
 
 async function decrypt(value: string): Promise<string> {
-  const { createDecipheriv } = await import("node:crypto");
-  const [iv, tag, ciphertext] = value.split(".");
-  if (!iv || !tag || !ciphertext) throw new Error("Uložené prihlasovacie údaje sú neplatné.");
-  const decipher = createDecipheriv("aes-256-gcm", await cryptoKey(), Buffer.from(iv, "base64url"));
-  decipher.setAuthTag(Buffer.from(tag, "base64url"));
-  return Buffer.concat([decipher.update(Buffer.from(ciphertext, "base64url")), decipher.final()]).toString("utf8");
+  const { decryptWordPressPassword } = await import("./wordpress-crypto.server");
+  return decryptWordPressPassword(value);
 }
 
 async function requireConfiguredAuth(): Promise<void> {
-  const { authConfigured } = await import("@/lib/auth/server");
-  if (!authConfigured) throw new Error("Pre pripojenie WordPressu je potrebné zapnúť prihlásenie.");
+  if (process.env.VITE_AUTH_ENABLED === "false") {
+    throw new Error("Pre pripojenie WordPressu je potrebné zapnúť prihlásenie.");
+  }
 }
 
 async function requestWordPress(url: URL, username: string, password: string, init: RequestInit = {}) {
@@ -123,7 +116,7 @@ async function validateCredentials(siteUrl: string, username: string, password: 
   return url;
 }
 
-async function connectionFor(sql: Awaited<ReturnType<typeof getSql>>, userId: string, id: string): Promise<Row> {
+async function connectionFor(sql: SqlClient, userId: string, id: string): Promise<Row> {
   const row = (await sql<Row>`select * from wordpress_connections where id = ${id} and user_id = ${userId}`)[0];
   if (!row?.encrypted_password) throw new Error("Pripojenie neexistuje.");
   return row;
@@ -153,7 +146,7 @@ export const listWordPressConnections = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }): Promise<WordPressConnection[]> => {
     await requireConfiguredAuth();
-    const sql = await getSql();
+    const sql = await getDb();
     const rows = await sql<Row>`select id, site_url, username, label, created_at, updated_at, last_tested_at from wordpress_connections where user_id = ${context.userId} order by created_at desc`;
     return rows.map(toConnection);
   });
@@ -164,7 +157,7 @@ export const createWordPressConnection = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     await requireConfiguredAuth();
     const siteUrl = (await validateCredentials(data.siteUrl, cleanText(data.username, 160), data.password)).origin;
-    const sql = await getSql();
+    const sql = await getDb();
     const id = crypto.randomUUID();
     const encrypted = await encrypt(data.password);
     const rows = await sql<Row>`insert into wordpress_connections (id, user_id, site_url, username, encrypted_password, label, last_tested_at) values (${id}, ${context.userId}, ${siteUrl}, ${cleanText(data.username, 160)}, ${encrypted}, ${cleanText(data.label, 120)}, current_timestamp) returning id, site_url, username, label, created_at, updated_at, last_tested_at`;
@@ -178,7 +171,7 @@ export const testWordPressConnection = createServerFn({ method: "POST" })
   .validator((input: { id: string }) => ({ id: cleanText(input?.id, 80) }))
   .handler(async ({ context, data }) => {
     await requireConfiguredAuth();
-    const sql = await getSql();
+    const sql = await getDb();
     const row = await connectionFor(sql, context.userId, data.id);
     await validateCredentials(row.site_url, row.username, await decrypt(row.encrypted_password));
     await sql`update wordpress_connections set last_tested_at = current_timestamp, updated_at = current_timestamp where id = ${data.id} and user_id = ${context.userId}`;
@@ -190,7 +183,7 @@ export const updateWordPressConnection = createServerFn({ method: "POST" })
   .validator((input: { id: string; siteUrl: string; username: string; password?: string; label?: string }) => input)
   .handler(async ({ context, data }) => {
     await requireConfiguredAuth();
-    const sql = await getSql();
+    const sql = await getDb();
     const existing = (await sql<Row>`select * from wordpress_connections where id = ${cleanText(data.id, 80)} and user_id = ${context.userId}`)[0];
     if (!existing?.encrypted_password) throw new Error("Pripojenie neexistuje.");
     const password = data.password?.trim() || await decrypt(existing.encrypted_password);
@@ -205,7 +198,7 @@ export const deleteWordPressConnection = createServerFn({ method: "POST" })
   .validator((input: { id: string }) => ({ id: cleanText(input?.id, 80) }))
   .handler(async ({ context, data }) => {
     await requireConfiguredAuth();
-    const sql = await getSql();
+    const sql = await getDb();
     await sql`delete from wordpress_connections where id = ${data.id} and user_id = ${context.userId}`;
     return { ok: true };
   });
@@ -217,7 +210,7 @@ export const listWordPressMedia = createServerFn({ method: "POST" })
   .validator((input: { id: string }) => ({ id: cleanText(input?.id, 80) }))
   .handler(async ({ context, data }) => {
     await requireConfiguredAuth();
-    const sql = await getSql();
+    const sql = await getDb();
     const row = await connectionFor(sql, context.userId, data.id);
     const response = await requestWordPress(new URL("/wp-json/wp/v2/media?per_page=50", await (await import("./wordpress-validation.server")).validateWordPressUrl(row.site_url)), row.username, await decrypt(row.encrypted_password));
     if (!response.ok) throw new Error("WordPress médiá sa nepodarilo načítať.");
@@ -231,7 +224,7 @@ export const uploadWordPressMedia = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     await requireConfiguredAuth();
     if (data.contentBase64.length > 10_000_000) throw new Error("Súbor je príliš veľký.");
-    const sql = await getSql();
+    const sql = await getDb();
     const row = await connectionFor(sql, context.userId, cleanText(data.id, 80));
     const url = await (await import("./wordpress-validation.server")).validateWordPressUrl(row.site_url);
     const response = await requestWordPress(new URL("/wp-json/wp/v2/media", url), row.username, await decrypt(row.encrypted_password), {
@@ -248,7 +241,7 @@ export const listWordPressContent = createServerFn({ method: "POST" })
   .validator((input: { id: string; type?: "post" | "page" }) => ({ id: cleanText(input?.id, 80), type: input?.type }))
   .handler(async ({ context, data }): Promise<WordPressContent[]> => {
     await requireConfiguredAuth();
-    const sql = await getSql();
+    const sql = await getDb();
     const row = await connectionFor(sql, context.userId, data.id);
     const types: Array<"post" | "page"> = data.type ? [data.type] : ["post", "page"];
     const results = await Promise.all(types.map(async (type) => {
@@ -263,7 +256,7 @@ export const getWordPressContent = createServerFn({ method: "POST" })
   .validator((input: { id: string; type: "post" | "page"; contentId: number }) => ({ id: cleanText(input?.id, 80), type: input.type, contentId: Number(input.contentId) }))
   .handler(async ({ context, data }): Promise<WordPressContent> => {
     await requireConfiguredAuth();
-    const row = await connectionFor(await getSql(), context.userId, data.id);
+    const row = await connectionFor(await getDb(), context.userId, data.id);
     const item = await wpJson(row, `${data.type}s/${data.contentId}?context=edit`);
     return mapContent(Array.isArray(item) ? item[0] : item, data.type);
   });
@@ -273,7 +266,7 @@ export const createWordPressContent = createServerFn({ method: "POST" })
   .validator((input: { id: string; type: "post" | "page"; title: string; content: string; status?: string }) => input)
   .handler(async ({ context, data }): Promise<WordPressContent> => {
     await requireConfiguredAuth();
-    const row = await connectionFor(await getSql(), context.userId, cleanText(data.id, 80));
+    const row = await connectionFor(await getDb(), context.userId, cleanText(data.id, 80));
     const item = await wpJson(row, `${data.type}s`, jsonBody({ title: cleanText(data.title, 300), content: String(data.content ?? "").slice(0, 200000), status: data.status === "publish" ? "publish" : "draft" }));
     return mapContent(Array.isArray(item) ? item[0] : item, data.type);
   });
@@ -283,7 +276,7 @@ export const updateWordPressContent = createServerFn({ method: "POST" })
   .validator((input: { id: string; type: "post" | "page"; contentId: number; title: string; content: string; status?: string }) => input)
   .handler(async ({ context, data }): Promise<WordPressContent> => {
     await requireConfiguredAuth();
-    const row = await connectionFor(await getSql(), context.userId, cleanText(data.id, 80));
+    const row = await connectionFor(await getDb(), context.userId, cleanText(data.id, 80));
     const item = await wpJson(row, `${data.type}s/${Number(data.contentId)}`, jsonBody({ title: cleanText(data.title, 300), content: String(data.content ?? "").slice(0, 200000), status: data.status === "publish" ? "publish" : "draft" }));
     return mapContent(Array.isArray(item) ? item[0] : item, data.type);
   });
@@ -293,7 +286,7 @@ export const deleteWordPressContent = createServerFn({ method: "POST" })
   .validator((input: { id: string; type: "post" | "page"; contentId: number }) => ({ id: cleanText(input?.id, 80), type: input.type, contentId: Number(input.contentId) }))
   .handler(async ({ context, data }) => {
     await requireConfiguredAuth();
-    const row = await connectionFor(await getSql(), context.userId, data.id);
+    const row = await connectionFor(await getDb(), context.userId, data.id);
     const result = await wpJson(row, `${data.type}s/${data.contentId}?force=true`, { method: "DELETE" });
     return { ok: !Array.isArray(result) };
   });
@@ -304,7 +297,7 @@ export const exportToWordPress = createServerFn({ method: "POST" })
   .validator((input: { id: string; type: "post" | "page"; contentId?: number; title: string; content: string; publish?: boolean }) => input)
   .handler(async ({ context, data }): Promise<WordPressContent> => {
     await requireConfiguredAuth();
-    const row = await connectionFor(await getSql(), context.userId, cleanText(data.id, 80));
+    const row = await connectionFor(await getDb(), context.userId, cleanText(data.id, 80));
     const body = jsonBody({ title: cleanText(data.title, 300), content: String(data.content ?? "").slice(0, 200000), status: data.publish ? "publish" : "draft" });
     const endpoint = data.contentId ? `${data.type}s/${Number(data.contentId)}` : `${data.type}s`;
     const item = await wpJson(row, endpoint, body);

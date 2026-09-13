@@ -15,6 +15,7 @@ import { Route as LaunchRouteImport } from './routes/launch'
 import { Route as PromptsRouteImport } from './routes/prompts'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as StudioRouteImport } from './routes/studio'
+import { Route as WordpressRouteImport } from './routes/wordpress'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiValidationHealthRouteImport } from './routes/api/validationHealth'
 
@@ -48,6 +49,11 @@ const StudioRoute = StudioRouteImport.update({
   path: '/studio',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WordpressRoute = WordpressRouteImport.update({
+  id: '/wordpress',
+  path: '/wordpress',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
@@ -66,6 +72,7 @@ export interface FileRoutesByFullPath {
   '/prompts': typeof PromptsRoute
   '/settings': typeof SettingsRoute
   '/studio': typeof StudioRoute
+  '/wordpress': typeof WordpressRoute
   '/api/health': typeof ApiHealthRoute
   '/api/validationHealth': typeof ApiValidationHealthRoute
 }
@@ -76,6 +83,7 @@ export interface FileRoutesByTo {
   '/prompts': typeof PromptsRoute
   '/settings': typeof SettingsRoute
   '/studio': typeof StudioRoute
+  '/wordpress': typeof WordpressRoute
   '/api/health': typeof ApiHealthRoute
   '/api/validationHealth': typeof ApiValidationHealthRoute
 }
@@ -87,6 +95,7 @@ export interface FileRoutesById {
   '/prompts': typeof PromptsRoute
   '/settings': typeof SettingsRoute
   '/studio': typeof StudioRoute
+  '/wordpress': typeof WordpressRoute
   '/api/health': typeof ApiHealthRoute
   '/api/validationHealth': typeof ApiValidationHealthRoute
 }
@@ -99,6 +108,7 @@ export interface FileRouteTypes {
     | '/prompts'
     | '/settings'
     | '/studio'
+    | '/wordpress'
     | '/api/health'
     | '/api/validationHealth'
   fileRoutesByTo: FileRoutesByTo
@@ -109,6 +119,7 @@ export interface FileRouteTypes {
     | '/prompts'
     | '/settings'
     | '/studio'
+    | '/wordpress'
     | '/api/health'
     | '/api/validationHealth'
   id:
@@ -119,6 +130,7 @@ export interface FileRouteTypes {
     | '/prompts'
     | '/settings'
     | '/studio'
+    | '/wordpress'
     | '/api/health'
     | '/api/validationHealth'
   fileRoutesById: FileRoutesById
@@ -130,6 +142,7 @@ export interface RootRouteChildren {
   PromptsRoute: typeof PromptsRoute
   SettingsRoute: typeof SettingsRoute
   StudioRoute: typeof StudioRoute
+  WordpressRoute: typeof WordpressRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiValidationHealthRoute: typeof ApiValidationHealthRoute
 }
@@ -178,6 +191,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StudioRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/wordpress': {
+      id: '/wordpress'
+      path: '/wordpress'
+      fullPath: '/wordpress'
+      preLoaderRoute: typeof WordpressRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/health': {
       id: '/api/health'
       path: '/api/health'
@@ -202,6 +222,7 @@ const rootRouteChildren: RootRouteChildren = {
   PromptsRoute: PromptsRoute,
   SettingsRoute: SettingsRoute,
   StudioRoute: StudioRoute,
+  WordpressRoute: WordpressRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiValidationHealthRoute: ApiValidationHealthRoute,
 }
