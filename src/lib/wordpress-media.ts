@@ -53,20 +53,47 @@ export async function compressWordPressImage(file: File): Promise<CompressedMedi
     };
   }
 
-  const dataUrl = await readFileAsDataUrl(file);
-  const image = await loadImage(dataUrl);
-  const scale = Math.min(1, MAX_DIMENSION / Math.max(image.naturalWidth, image.naturalHeight));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
-  canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
-  const context = canvas.getContext("2d");
-  if (!context) throw new Error("Prehliadač nepodporuje spracovanie obrázka.");
-  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  try {
+    const dataUrl = await readFileAsDataUrl(file);
+    const image = await loadImage(dataUrl);
+    try {
+      const scale = Math.min(1, MAX_DIMENSION / Math.max(image.naturalWidth, image.naturalHeight));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("Prehliadač nepodporuje spracovanie obrázka.");
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
 
-  const blob = await new Promise<Blob | null>((resolve) =>
-    canvas.toBlob(resolve, "image/webp", WEBP_QUALITY),
-  );
-  if (!blob || blob.type !== "image/webp") {
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, "image/webp", WEBP_QUALITY),
+      );
+      if (!blob || blob.type !== "image/webp") {
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        return {
+          filename: file.name,
+          mimeType: file.type || "application/octet-stream",
+          contentBase64: base64FromBytes(bytes),
+          originalBytes,
+          compressedBytes: bytes.byteLength,
+        };
+      }
+
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+      const stem = file.name.replace(/\.[^.]+$/, "") || "image";
+      return {
+        filename: `${stem}.webp`,
+        mimeType: "image/webp",
+        contentBase64: base64FromBytes(bytes),
+        originalBytes,
+        compressedBytes: bytes.byteLength,
+      };
+    } finally {
+      image.onload = null;
+      image.onerror = null;
+      image.src = "";
+    }
+  } catch {
     const bytes = new Uint8Array(await file.arrayBuffer());
     return {
       filename: file.name,
@@ -76,14 +103,4 @@ export async function compressWordPressImage(file: File): Promise<CompressedMedi
       compressedBytes: bytes.byteLength,
     };
   }
-
-  const bytes = new Uint8Array(await blob.arrayBuffer());
-  const stem = file.name.replace(/\.[^.]+$/, "") || "image";
-  return {
-    filename: `${stem}.webp`,
-    mimeType: "image/webp",
-    contentBase64: base64FromBytes(bytes),
-    originalBytes,
-    compressedBytes: bytes.byteLength,
-  };
 }

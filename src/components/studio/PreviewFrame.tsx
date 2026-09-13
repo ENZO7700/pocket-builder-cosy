@@ -1,8 +1,9 @@
 import { useEffect, useRef } from "react";
-import { injectCozyElements } from "@/lib/preview/cozy-elements";
-import { PREVIEW_SANDBOX } from "@/lib/preview/sandbox";
-import { morphIframeDocument } from "@/lib/preview/live-morpher";
-import { shouldReloadPreview } from "@/lib/preview/dom-patch-utils";
+import {
+  PREVIEW_SANDBOX,
+  updatePreviewFrame,
+  type PreviewFrameState,
+} from "@/lib/preview/preview-frame-controller";
 
 export { PREVIEW_SANDBOX };
 
@@ -14,48 +15,21 @@ export function PreviewFrame({ html, title }: { html: string; title: string }) {
   const previousHtmlRef = useRef("");
 
   useEffect(() => {
-    const iframe = ref.current;
-    if (!iframe) return;
-    if (!html.trim()) {
-      iframe.removeAttribute("src");
-      if (urlRef.current) {
-        URL.revokeObjectURL(urlRef.current);
-        urlRef.current = "";
-      }
-      previousHtmlRef.current = "";
-      return;
-    }
-
-    const next = injectCozyElements(html);
-    const previous = previousHtmlRef.current;
-    if (
-      iframe.contentDocument?.body &&
-      previous &&
-      !shouldReloadPreview(previous, html) &&
-      morphIframeDocument(iframe, html)
-    ) {
-      previousHtmlRef.current = html;
-      iframe.dataset.patch = "morphed";
-      iframe.dataset.patchReason = "html-changed";
-      return;
-    }
-
-    const blob = new Blob([next], { type: "text/html;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const previousUrl = urlRef.current;
-    urlRef.current = url;
-    previousHtmlRef.current = html;
-    iframe.dataset.patch = "reloaded";
-    iframe.dataset.patchReason = previousUrl ? "html-changed" : "first";
-    iframe.src = url;
-    if (previousUrl) URL.revokeObjectURL(previousUrl);
-
-    return () => {
-      if (urlRef.current === url) {
-        URL.revokeObjectURL(url);
-        urlRef.current = "";
-      }
+    const state: PreviewFrameState = {
+      get currentUrl() {
+        return urlRef.current;
+      },
+      set currentUrl(val: string) {
+        urlRef.current = val;
+      },
+      get previousHtml() {
+        return previousHtmlRef.current;
+      },
+      set previousHtml(val: string) {
+        previousHtmlRef.current = val;
+      },
     };
+    return updatePreviewFrame(ref.current, html, state);
   }, [html]);
 
   return (

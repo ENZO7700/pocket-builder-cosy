@@ -1,4 +1,4 @@
-import { GENERATE_TIMEOUT_MS, withTimeout } from "@/lib/ai/abort-signal";
+import { GENERATE_TIMEOUT_MS, withTimeout } from "../lib/ai/abort-signal.ts";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 

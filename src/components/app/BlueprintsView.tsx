@@ -18,42 +18,11 @@ import { useMemo, useState } from "react";
 
 type SortMode = "all" | "recent" | "az";
 
-const SMART_API_POWERUPS = [
-  {
-    id: "weather",
-    title: "Počasie",
-    detail: "OpenWeatherMap blok s bezpečným loading a error stavom.",
-    icon: "☁",
-    prompt:
-      "Pridaj do aplikácie kartu Aktuálne počasie pre mesto Praha. Použi OpenWeatherMap fetch s placeholderom pre VITE_OPENWEATHERMAP_KEY, bezpečne ošetri loading, chyby a chýbajúci kľúč, bez externých knižníc. Zachovaj existujúci dizajn.",
-  },
-  {
-    id: "currency",
-    title: "Kurzy mien",
-    detail: "ExchangeRate-API widget s cache a fallback stavom.",
-    icon: "↔",
-    prompt:
-      "Pridaj prevodník EUR/CZK s ExchangeRate-API. Použi fetch na https://open.er-api.com/v6/latest/EUR, zobraz loading a zrozumiteľnú chybu, validuj číselný vstup a pri výpadku ponechaj posledný výsledok. Zachovaj existujúci dizajn.",
-  },
-  {
-    id: "qr",
-    title: "QR kód",
-    detail: "Samostatný QR blok pripravený na URL alebo text.",
-    icon: "▦",
-    prompt:
-      "Pridaj do aplikácie QR kód pre zadaný text alebo URL. Vygeneruj ho bez externých CDN pomocou inline SVG/canvas algoritmu alebo bezpečného textového fallbacku, pridaj kopírovanie vstupu a zachovaj existujúci dizajn.",
-  },
-] as const;
-
-function safeFileName(title: string) {
-  const normalized = title
-    .normalize("NFKD")
-    .replace(/[^\w\s-]/g, "")
-    .trim()
-    .replace(/\s+/g, "-")
-    .toLowerCase();
-  return `${normalized || "blueprint"}.html`;
-}
+import {
+  SMART_API_POWERUPS,
+  safeFileName,
+  applyPowerUp,
+} from "@/lib/blueprints/powerups";
 
 function downloadHtml(blueprint: BlueprintItem) {
   const blob = new Blob([blueprint.html], { type: "text/html;charset=utf-8" });
@@ -131,9 +100,10 @@ export function BlueprintsView() {
     }
   }
 
-  function applyPowerUp(prompt: string) {
-    useStudioStore.getState().setBrief(prompt);
-    void navigate({ to: "/studio" });
+  function onApplyPowerUp(prompt: string) {
+    applyPowerUp(prompt, (opts) => {
+      void navigate(opts);
+    });
   }
 
   return (
@@ -217,7 +187,7 @@ export function BlueprintsView() {
               <button
                 key={powerUp.id}
                 type="button"
-                onClick={() => applyPowerUp(powerUp.prompt)}
+                onClick={() => onApplyPowerUp(powerUp.prompt)}
                 className="group rounded-2xl border border-border bg-surface p-4 text-left transition hover:-translate-y-0.5 hover:border-accent/60 hover:shadow-lg hover:shadow-black/10 focus:outline-none focus:ring-2 focus:ring-accent/40"
               >
                 <span className="flex size-9 items-center justify-center rounded-xl bg-accent/15 text-lg text-accent" aria-hidden="true">

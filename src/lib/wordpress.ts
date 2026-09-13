@@ -1,10 +1,10 @@
-import { authMiddleware } from "@/lib/auth/middleware";
+import { authMiddleware } from "./auth/middleware.ts";
 import { createServerFn } from "@tanstack/react-start";
 
-type SqlClient = Awaited<ReturnType<typeof import("@/lib/db").getSql>>;
+type SqlClient = Awaited<ReturnType<typeof import("./db.ts").getSql>>;
 
 async function getDb(): Promise<SqlClient> {
-  const { getSql } = await import("@/lib/db");
+  const { getSql } = await import("./db.ts");
   return getSql();
 }
 
@@ -66,12 +66,12 @@ function cleanText(value: unknown, max: number): string {
 }
 
 async function encrypt(value: string): Promise<string> {
-  const { encryptWordPressPassword } = await import("./wordpress-crypto.server");
+  const { encryptWordPressPassword } = await import("./wordpress-crypto.server.ts");
   return encryptWordPressPassword(value);
 }
 
 async function decrypt(value: string): Promise<string> {
-  const { decryptWordPressPassword } = await import("./wordpress-crypto.server");
+  const { decryptWordPressPassword } = await import("./wordpress-crypto.server.ts");
   return decryptWordPressPassword(value);
 }
 
@@ -82,7 +82,7 @@ async function requireConfiguredAuth(): Promise<void> {
 }
 
 async function requestWordPress(url: URL, username: string, password: string, init: RequestInit = {}) {
-  const { validateWordPressUrl } = await import("./wordpress-validation.server");
+  const { validateWordPressUrl } = await import("./wordpress-validation.server.ts");
   const headers = new Headers(init.headers);
   headers.set("Authorization", `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`);
   headers.set("Accept", "application/json");
@@ -111,7 +111,7 @@ function toConnection(row: Row): WordPressConnection {
 }
 
 async function validateCredentials(siteUrl: string, username: string, password: string) {
-  const { validateWordPressUrl, redactWordPressError } = await import("./wordpress-validation.server");
+  const { validateWordPressUrl, redactWordPressError } = await import("./wordpress-validation.server.ts");
   const url = await validateWordPressUrl(siteUrl);
   if (!username || !password) throw new Error("Používateľské meno a heslo sú povinné.");
   let response: Response;
@@ -223,7 +223,7 @@ export const listWordPressMedia = createServerFn({ method: "POST" })
     await requireConfiguredAuth();
     const sql = await getDb();
     const row = await connectionFor(sql, context.userId, data.id);
-    const response = await requestWordPress(new URL("/wp-json/wp/v2/media?per_page=50", await (await import("./wordpress-validation.server")).validateWordPressUrl(row.site_url)), row.username, await decrypt(row.encrypted_password));
+    const response = await requestWordPress(new URL("/wp-json/wp/v2/media?per_page=50", await (await import("./wordpress-validation.server.ts")).validateWordPressUrl(row.site_url)), row.username, await decrypt(row.encrypted_password));
     if (!response.ok) throw new Error("WordPress médiá sa nepodarilo načítať.");
     const media = (await response.json()) as Array<{ id?: number; date?: string; link?: string; title?: { rendered?: string } }>;
     return media.map((item) => ({ id: item.id ?? 0, date: item.date ?? null, link: item.link ?? null, title: item.title?.rendered ?? "" }));
@@ -237,7 +237,7 @@ export const uploadWordPressMedia = createServerFn({ method: "POST" })
     if (data.contentBase64.length > 10_000_000) throw new Error("Komprimovaný súbor je príliš veľký (limit 7,5 MB).");
     const sql = await getDb();
     const row = await connectionFor(sql, context.userId, cleanText(data.id, 80));
-    const url = await (await import("./wordpress-validation.server")).validateWordPressUrl(row.site_url);
+    const url = await (await import("./wordpress-validation.server.ts")).validateWordPressUrl(row.site_url);
     const response = await requestWordPress(new URL("/wp-json/wp/v2/media", url), row.username, await decrypt(row.encrypted_password), {
       method: "POST",
       headers: { "Content-Type": cleanText(data.mimeType, 100), "Content-Disposition": `attachment; filename="${cleanText(data.filename, 120).replace(/["\\]/g, "")}"` },
@@ -326,7 +326,7 @@ type SerializableValue = string | number | boolean | null | undefined | Serializ
 export type JsonRecord = Record<string, SerializableValue>;
 
 async function wpApiJson<T extends JsonRecord | JsonRecord[] = JsonRecord>(row: Row, path: string, init?: RequestInit): Promise<T> {
-  const { validateWordPressUrl } = await import("./wordpress-validation.server");
+  const { validateWordPressUrl } = await import("./wordpress-validation.server.ts");
   const url = await validateWordPressUrl(row.site_url);
   const normalizedPath = path.startsWith("wp-json/") ? path : `wp-json/${path.replace(/^\/+/, "")}`;
   const response = await requestWordPress(new URL(`/${normalizedPath}`, url), row.username, await decrypt(row.encrypted_password!), init);

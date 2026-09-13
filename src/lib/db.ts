@@ -131,11 +131,30 @@ async function createPgliteSql(): Promise<Sql> {
   // passes serialized on a global chain so concurrent callers never
   // double-apply.
   const migrate = async (): Promise<void> => {
-    const migrations = import.meta.glob("/migrations/*.sql", {
-      query: "?raw",
-      import: "default",
-      eager: true,
-    }) as Record<string, string>;
+    const globFn = (import.meta as unknown as { glob?: (pattern: string, opts?: unknown) => Record<string, string> }).glob;
+    let migrations: Record<string, string> = {};
+    if (typeof globFn === "function") {
+      migrations = globFn("/migrations/*.sql", {
+        query: "?raw",
+        import: "default",
+        eager: true,
+      });
+    } else {
+      try {
+        const { readdirSync, readFileSync, existsSync } = await import("node:fs");
+        const { resolve, join } = await import("node:path");
+        const dir = resolve(process.cwd(), "migrations");
+        if (existsSync(dir)) {
+          for (const file of readdirSync(dir)) {
+            if (file.endsWith(".sql")) {
+              migrations[`/migrations/${file}`] = readFileSync(join(dir, file), "utf8");
+            }
+          }
+        }
+      } catch {
+        migrations = {};
+      }
+    }
     const doneRows = await pg.query<{ name: string }>("select name from _migrations");
     const done = doneRows.rows.map((r) => r.name);
     for (const { name, path } of pendingMigrations(Object.keys(migrations), done)) {
