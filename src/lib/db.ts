@@ -104,14 +104,7 @@ async function createPgliteSql(): Promise<Sql> {
   globalRef.__pgliteInstance__ ??= (async () => {
     const { PGlite } = await import("@electric-sql/pglite");
     const dataDir = process.env.PGLITE_DATA_DIR?.trim() || undefined;
-    const options = {
-      parsers: {
-        [OID_INT8]: Number,
-        [OID_DATE]: identity,
-        [OID_INTERVAL]: identity,
-      },
-    };
-    const pg = dataDir ? new PGlite(dataDir, options) : new PGlite(options);
+    const pg = dataDir ? new PGlite(dataDir) : new PGlite();
     await pg.waitReady;
     await pg.exec(
       "create table if not exists _migrations (name text primary key, applied_at timestamptz not null default now())",
@@ -186,6 +179,22 @@ async function createSql(): Promise<Sql> {
         "or a server route loader, never from client code.",
     );
   }
+  const isProduction = process.env.NODE_ENV === "production";
+  const isExplicitLocalFallback = Boolean(
+    process.env.ALLOW_LOCAL_PGLITE === "1" ||
+      process.env.VITE_PREVIEW === "1" ||
+      process.env.NODE_ENV === "development",
+  );
+  const isDeployed = Boolean(process.env.VERCEL === "1" || process.env.DEPLOY_ENV === "production");
+
+  if ((isDeployed || (isProduction && !isExplicitLocalFallback)) && !databaseUrl) {
+    throw new Error(
+      "[db] FATAL: DATABASE_URL is missing in production runtime.\n" +
+        "A real PostgreSQL database connection string (e.g. Neon, Supabase) is required in production.\n" +
+        "Ephemeral PGLite fallback is only permitted in local development and preview.",
+    );
+  }
+
   return dbSource === "neon" ? createNeonSql() : createPgliteSql();
 }
 

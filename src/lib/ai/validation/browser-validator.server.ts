@@ -83,13 +83,12 @@ export class BrowserValidator implements Validator {
     if (!this.poolInitialized) {
       const initialized = await pool.init();
       if (!initialized) {
-        // Fallback to static if browser pool fails
         return {
-          ok: true, // Don't block generation if validation fails
+          ok: false,
           errors: [{
             type: 'syntax',
-            message: 'Browser pool initialization failed, using fallback validation',
-            severity: 'warning'
+            message: 'Browser pool initialization failed',
+            severity: 'critical'
           }],
           warnings: [],
           strategy: 'browser',

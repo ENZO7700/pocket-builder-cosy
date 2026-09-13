@@ -13,6 +13,10 @@ export type GenerateResult =
       code: string;
       provider: AiProvider;
       model: string;
+      validation?: {
+        strategy: string;
+        warnings: string[];
+      };
     }
   | {
       ok: false;
@@ -368,14 +372,24 @@ async function generateWithRepair(
 
       if (validation.ok) {
         // Success - pack and return
-        return pack(result.text, result.provider, result.model);
+        const packed = pack(result.text, result.provider, result.model);
+        if (packed.ok) {
+          packed.validation = {
+            strategy: validation.strategy,
+            warnings: validation.warnings,
+          };
+        }
+        return packed;
       }
 
       // Validation failed - check if we should retry
       if (retryCount >= MAX_REPAIR_RETRIES) {
-        // Max retries reached, return best attempt with warnings
         console.warn(`Self-repair: Max retries (${MAX_REPAIR_RETRIES}) reached. Errors:`, validation.errors);
-        return pack(result.text, result.provider, result.model);
+        return {
+          ok: false,
+          error: `Generated HTML failed validation after ${MAX_REPAIR_RETRIES + 1} attempt(s): ${validation.errors.map((e) => e.message).join("; ")}`,
+          status: 422,
+        };
       }
 
       // Build repair prompt
@@ -471,7 +485,7 @@ export const validationHealth = createServerFn({ method: "GET" }).handler(
       };
     } catch {
       return {
-        ok: true,
+        ok: false,
         strategy: 'none',
         browser: 'failed',
         static: 'ok',

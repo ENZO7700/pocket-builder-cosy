@@ -41,4 +41,19 @@ describe("consumeQuota", () => {
     assert.equal(denied.ok, false);
     if (!denied.ok) assert.equal(denied.reason, "day");
   });
+
+  it("serializes concurrent consumes for the same key", async () => {
+    const store: QuotaStore = createInMemoryQuotaStore();
+    const t0 = Date.parse("2026-09-11T10:00:00.000Z");
+    const results = await Promise.all(
+      Array.from({ length: 20 }, () => consumeQuota(store, "7.7.7.7", t0, 10, 100)),
+    );
+
+    assert.equal(results.filter((result) => result.ok).length, 10);
+    assert.equal(results.filter((result) => !result.ok).length, 10);
+    for (const denied of results.filter((result) => !result.ok)) {
+      assert.equal(denied.ok, false);
+      if (!denied.ok) assert.equal(denied.reason, "minute");
+    }
+  });
 });

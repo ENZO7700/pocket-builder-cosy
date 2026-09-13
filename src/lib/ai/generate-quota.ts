@@ -8,6 +8,7 @@ export type QuotaStore = {
   get: (key: string) => Promise<QuotaBucket | undefined>;
   set: (key: string, value: QuotaBucket) => Promise<void>;
   clear: () => void;
+  withLock?: <T>(key: string, run: () => Promise<T>) => Promise<T>;
 };
 
 export type InMemoryQuotaStore = Map<string, QuotaBucket>;
@@ -41,6 +42,10 @@ export async function consumeQuota(
   perMinute: number,
   perDay: number,
 ): Promise<QuotaOk | QuotaDenied> {
+  if (store.withLock) {
+    return store.withLock(ip, () => consumeQuota({ ...store, withLock: undefined }, ip, nowMs, perMinute, perDay));
+  }
+
   const windowMs = 60_000;
   let bucket = await store.get(ip);
   if (!bucket) {
@@ -77,10 +82,31 @@ export async function consumeQuota(
 // Create an async wrapper for in-memory store to maintain backward compatibility
 export function createInMemoryQuotaStore(): QuotaStore {
   const memoryStore: InMemoryQuotaStore = new Map();
+  const locks = new Map<string, Promise<void>>();
+
+  async function withLock<T>(key: string, run: () => Promise<T>): Promise<T> {
+    const previous = locks.get(key) ?? Promise.resolve();
+    let release!: () => void;
+    const current = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    locks.set(key, previous.then(() => current, () => current));
+    await previous.catch(() => undefined);
+    try {
+      return await run();
+    } finally {
+      release();
+      if (locks.get(key) === current) locks.delete(key);
+    }
+  }
   
   return {
     get: async (key: string) => memoryStore.get(key),
     set: async (key: string, value: QuotaBucket) => { memoryStore.set(key, value); },
-    clear: () => memoryStore.clear()
+    clear: () => {
+      memoryStore.clear();
+      locks.clear();
+    },
+    withLock,
   };
 }

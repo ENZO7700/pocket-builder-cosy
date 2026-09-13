@@ -20,6 +20,7 @@ import { Route as StudioRouteImport } from './routes/studio'
 import { Route as WordpressRouteImport } from './routes/wordpress'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiValidationHealthRouteImport } from './routes/api/validationHealth'
+import { Route as ClientTokenRouteImport } from './routes/client.$token'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const IndexRoute = IndexRouteImport.update({
@@ -77,6 +78,11 @@ const ApiValidationHealthRoute = ApiValidationHealthRouteImport.update({
   path: '/api/validationHealth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ClientTokenRoute = ClientTokenRouteImport.update({
+  id: '/client/$token',
+  path: '/client/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/wordpress': typeof WordpressRoute
   '/api/health': typeof ApiHealthRoute
   '/api/validationHealth': typeof ApiValidationHealthRoute
+  '/client/$token': typeof ClientTokenRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
@@ -109,6 +116,7 @@ export interface FileRoutesByTo {
   '/wordpress': typeof WordpressRoute
   '/api/health': typeof ApiHealthRoute
   '/api/validationHealth': typeof ApiValidationHealthRoute
+  '/client/$token': typeof ClientTokenRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
@@ -124,6 +132,7 @@ export interface FileRoutesById {
   '/wordpress': typeof WordpressRoute
   '/api/health': typeof ApiHealthRoute
   '/api/validationHealth': typeof ApiValidationHealthRoute
+  '/client/$token': typeof ClientTokenRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
     | '/wordpress'
     | '/api/health'
     | '/api/validationHealth'
+    | '/client/$token'
     | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -154,6 +164,7 @@ export interface FileRouteTypes {
     | '/wordpress'
     | '/api/health'
     | '/api/validationHealth'
+    | '/client/$token'
     | '/api/auth/$'
   id:
     | '__root__'
@@ -168,6 +179,7 @@ export interface FileRouteTypes {
     | '/wordpress'
     | '/api/health'
     | '/api/validationHealth'
+    | '/client/$token'
     | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
@@ -183,6 +195,7 @@ export interface RootRouteChildren {
   WordpressRoute: typeof WordpressRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiValidationHealthRoute: typeof ApiValidationHealthRoute
+  ClientTokenRoute: typeof ClientTokenRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
@@ -265,6 +278,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiValidationHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/client/$token': {
+      id: '/client/$token'
+      path: '/client/$token'
+      fullPath: '/client/$token'
+      preLoaderRoute: typeof ClientTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -287,6 +307,7 @@ const rootRouteChildren: RootRouteChildren = {
   WordpressRoute: WordpressRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiValidationHealthRoute: ApiValidationHealthRoute,
+  ClientTokenRoute: ClientTokenRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport

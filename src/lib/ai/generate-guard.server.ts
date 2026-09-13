@@ -62,11 +62,6 @@ async function quotaStore(): Promise<QuotaStore> {
   return globalRef.__generateQuota__;
 }
 
-// For backward compatibility, provide a sync getQuotaStore function
-function getQuotaStoreSync(): QuotaStore | undefined {
-  return globalRef.__generateQuota__;
-}
-
 function envInt(name: string, fallback: number): number {
   const n = Number(process.env[name]);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;

@@ -6,8 +6,8 @@ import { chromium, Browser, BrowserContext, Page } from 'playwright';
 import type { BrowserPool } from './types.server';
 
 interface PoolPage {
-  page: Page;
   context: BrowserContext;
+  page: Page | null;
   inUse: boolean;
   lastUsed: number;
 }
@@ -67,12 +67,7 @@ export class PlaywrightBrowserPool implements BrowserPool {
           serviceWorkers: 'block',
         });
         
-        this.pages.push({
-          page: await context.newPage(),
-          context,
-          inUse: false,
-          lastUsed: Date.now()
-        });
+        this.pages.push({ page: null, context, inUse: false, lastUsed: Date.now() });
       }
 
       // Setup graceful shutdown
@@ -114,12 +109,7 @@ export class PlaywrightBrowserPool implements BrowserPool {
         serviceWorkers: 'block',
       });
       
-      pageEntry = {
-        page: await context.newPage(),
-        context,
-        inUse: false,
-        lastUsed: Date.now()
-      };
+      pageEntry = { page: null, context, inUse: false, lastUsed: Date.now() };
       
       this.pages.push(pageEntry);
     }
@@ -127,6 +117,7 @@ export class PlaywrightBrowserPool implements BrowserPool {
     // Mark as in use
     pageEntry.inUse = true;
     pageEntry.lastUsed = Date.now();
+    pageEntry.page = await pageEntry.context.newPage();
 
     return { page: pageEntry.page, context: pageEntry.context };
   }
@@ -148,8 +139,6 @@ export class PlaywrightBrowserPool implements BrowserPool {
 
     try {
       await page.close();
-      // Note: We close the page but keep the context for reuse
-      // The context will be reused for the next page
     } catch (error) {
       console.warn('[BrowserPool] Error releasing page:', error);
     }
@@ -158,7 +147,8 @@ export class PlaywrightBrowserPool implements BrowserPool {
     const pageEntry = this.pages.find(p => p.page === page);
     if (pageEntry) {
       pageEntry.inUse = false;
-      pageEntry.page = page; // Keep reference until next use
+      pageEntry.page = null;
+      pageEntry.lastUsed = Date.now();
     }
   }
 
@@ -173,7 +163,7 @@ export class PlaywrightBrowserPool implements BrowserPool {
       const pageEntry = this.pages[i];
       if (!pageEntry.inUse && (now - pageEntry.lastUsed) > MAX_IDLE_TIME) {
         try {
-          await pageEntry.page.close();
+          await pageEntry.page?.close();
           await pageEntry.context.close();
           this.pages.splice(i, 1);
         } catch (error) {
@@ -237,7 +227,7 @@ export class PlaywrightBrowserPool implements BrowserPool {
       // Close all pages
       for (const pageEntry of this.pages) {
         try {
-          await pageEntry.page.close().catch(() => {});
+          await pageEntry.page?.close().catch(() => {});
           await pageEntry.context.close().catch(() => {});
         } catch {
           // Ignore errors during cleanup

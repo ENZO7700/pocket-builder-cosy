@@ -62,6 +62,7 @@ const FORBIDDEN_BUILTINS = new Set([
 const DUAL_FNS = new Set([
   join(SRC, "lib/ai/generate.ts"),
   join(SRC, "lib/auth/middleware.ts"),
+  join(SRC, "lib/client-approvals.ts"),
   join(SRC, "lib/wordpress.ts"),
   join(SRC, "routes/api/auth/$.ts"),
 ]);

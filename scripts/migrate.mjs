@@ -18,10 +18,23 @@ import { dirname, join } from "node:path";
 import pg from "pg";
 import { pendingMigrations } from "./migration-plan.mjs";
 
+const isDeployedProduction =
+  process.env.VERCEL === "1" ||
+  process.env.REQUIRE_PROD_DB === "1" ||
+  process.env.DEPLOY_ENV === "production";
+
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
+  if (isDeployedProduction) {
+    console.error(
+      "\n[migrate] FATAL ERROR: DATABASE_URL is missing in production deployment.\n" +
+      "Production cannot run without a live PostgreSQL database (e.g. Neon, Supabase).\n" +
+      "Please configure DATABASE_URL in your hosting platform environment variables.\n",
+    );
+    process.exit(1);
+  }
   console.log(
-    "[migrate] DATABASE_URL not set — skipping (the PGLite fallback migrates itself).",
+    "[migrate] DATABASE_URL not set — skipping (the PGLite fallback migrates itself in local dev/preview).",
   );
   process.exit(0);
 }
@@ -81,18 +94,7 @@ async function main() {
 }
 
 main().catch((err) => {
-  const code = err?.code;
   const msg = String(err?.message || err);
-  if (
-    code === "ECONNREFUSED" ||
-    code === "ENOTFOUND" ||
-    code === "ETIMEDOUT" ||
-    code === "ECONNRESET" ||
-    /connect(ion)? (refused|timed out|failed)/i.test(msg)
-  ) {
-    console.warn("[migrate] database unreachable — skipping so publish can finish.");
-    process.exit(0);
-  }
   console.error("[migrate] failed:", msg);
   // pg errors carry the context needed to debug a bad SQL file.
   for (const key of ["code", "detail", "hint", "position", "where"]) {
